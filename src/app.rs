@@ -293,7 +293,7 @@ pub fn run() {
                         Ok(release) => {
                             let latest = release["tag_name"].as_str().unwrap_or("unknown");
                             let windows_url = release["windows"]["download_url"].as_str().map(str::to_string);
-                            *url_store.lock().expect("update URL lock poisoned") = windows_url.clone();
+                            *update_download_url.lock().expect("update URL lock poisoned") = windows_url.clone();
                             let current = env!("CARGO_PKG_VERSION");
                             let latest_clean = latest.trim_start_matches('v');
                             let is_newer = semver::Version::parse(latest_clean)
