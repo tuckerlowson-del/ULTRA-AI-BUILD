@@ -275,8 +275,10 @@ pub fn run() {
 
     let weak_for_update = ui.as_weak();
     let notifications_for_update = Arc::clone(&notifications);
+    let update_url_state = Arc::clone(&update_download_url);
     ui.on_check_updates(move || {
         let weak = weak_for_update.clone();
+        let url_state = Arc::clone(&update_url_state);
         let notify = Arc::clone(&notifications_for_update);
         std::thread::spawn(move || {
             let result = reqwest::blocking::Client::new()
@@ -293,7 +295,7 @@ pub fn run() {
                         Ok(release) => {
                             let latest = release["tag_name"].as_str().unwrap_or("unknown");
                             let windows_url = release["windows"]["download_url"].as_str().map(str::to_string);
-                            *update_download_url.lock().expect("update URL lock poisoned") = windows_url.clone();
+                            *url_state.lock().expect("update URL lock poisoned") = windows_url.clone();
                             let current = env!("CARGO_PKG_VERSION");
                             let latest_clean = latest.trim_start_matches('v');
                             let is_newer = semver::Version::parse(latest_clean)
@@ -360,6 +362,7 @@ pub fn run() {
                         .spawn().map_err(|e| e.to_string())?;
                     Ok((download, script))
                 })();
+                let install_started = result.is_ok();
                 let _ = slint::invoke_from_event_loop(move || {
                     if let Some(window) = weak.upgrade() {
                         match result {
@@ -368,6 +371,7 @@ pub fn run() {
                         }
                     }
                 });
+                #[cfg(windows)]
                 if install_started { std::thread::sleep(std::time::Duration::from_millis(700)); std::process::exit(0); }
             });
         }
