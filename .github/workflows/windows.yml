@@ -32,8 +32,14 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Assign a unique release version
-        run: npm version 0.5.${{ github.run_number }} --no-git-tag-version
+        id: appversion
+        run: |
+          VERSION="0.6.${{ github.run_number }}"
+          npm version "$VERSION" --no-git-tag-version
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Build React interface
+        env:
+          VITE_APP_VERSION: ${{ steps.appversion.outputs.version }}
         run: npm run build
       - name: Package Windows installer
         run: npm run dist:win
