@@ -2,6 +2,10 @@ package com.tuckerlowson.onebrain;
 
 import android.content.Intent;
 import android.net.Uri;
+import android.content.SharedPreferences;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+import android.util.Base64;
 import android.os.Build;
 import android.provider.Settings;
 import com.getcapacitor.*;
@@ -15,11 +19,96 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
 
 @CapacitorPlugin(name = "ApkInstaller")
 public class ApkInstallerPlugin extends Plugin {
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private File downloadedApk;
+
+    private static final String API_KEY_ALIAS = "onebrain_openrouter_api_key";
+    private static final String SECURE_PREFS = "onebrain_secure_settings";
+
+    private SecretKey getOrCreateApiKeySecret() throws Exception {
+        KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+        keyStore.load(null);
+        if (keyStore.containsAlias(API_KEY_ALIAS)) {
+            return (SecretKey) keyStore.getKey(API_KEY_ALIAS, null);
+        }
+        KeyGenerator generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore");
+        generator.init(new KeyGenParameterSpec.Builder(API_KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setRandomizedEncryptionRequired(true)
+            .build());
+        return generator.generateKey();
+    }
+
+    @PluginMethod
+    public void saveApiKey(PluginCall call) {
+        try {
+            String value = call.getString("key", "").trim();
+            if (value.isEmpty() || value.length() > 500) {
+                call.reject("Enter a valid API key.");
+                return;
+            }
+            SecretKey secret = getOrCreateApiKeySecret();
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.ENCRYPT_MODE, secret);
+            byte[] iv = cipher.getIV();
+            byte[] encrypted = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
+            byte[] combined = new byte[iv.length + encrypted.length];
+            System.arraycopy(iv, 0, combined, 0, iv.length);
+            System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
+            getContext().getSharedPreferences(SECURE_PREFS, 0).edit()
+                .putString("openrouter_api_key", Base64.encodeToString(combined, Base64.NO_WRAP))
+                .apply();
+            JSObject result = new JSObject();
+            result.put("saved", true);
+            result.put("encrypted", true);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Could not securely save the API key: " + e.getMessage(), e);
+        }
+    }
+
+    @PluginMethod
+    public void getApiKey(PluginCall call) {
+        try {
+            SharedPreferences preferences = getContext().getSharedPreferences(SECURE_PREFS, 0);
+            String stored = preferences.getString("openrouter_api_key", null);
+            JSObject result = new JSObject();
+            if (stored == null || stored.isEmpty()) {
+                result.put("key", "");
+                result.put("persisted", false);
+                result.put("available", true);
+                call.resolve(result);
+                return;
+            }
+            byte[] combined = Base64.decode(stored, Base64.NO_WRAP);
+            if (combined.length <= 12) throw new Exception("Stored API key data is invalid.");
+            byte[] iv = new byte[12];
+            byte[] encrypted = new byte[combined.length - 12];
+            System.arraycopy(combined, 0, iv, 0, 12);
+            System.arraycopy(combined, 12, encrypted, 0, encrypted.length);
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE, getOrCreateApiKeySecret(), new GCMParameterSpec(128, iv));
+            String value = new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
+            result.put("key", value);
+            result.put("persisted", true);
+            result.put("available", true);
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Could not read the encrypted API key: " + e.getMessage(), e);
+        }
+    }
+
 
     @PluginMethod
     public void download(PluginCall call) {
