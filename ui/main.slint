@@ -34,11 +34,11 @@ export component MainWindow inherits Window {
                     Text { text: "PRIVATE AI NETWORK"; color: #6f91b9; font-size: 10px; letter-spacing: 1px; }
                     Rectangle { height: 1px; background: #24334a; }
 
-                    Button { text: "◈   Workspace"; clicked => root.status_text = "Multi-model chat workspace active."; }
-                    Button { text: "◎   AI network"; clicked => root.status_text = "Enter up to five OpenRouter model IDs, separated by semicolons."; }
-                    Button { text: "▣   Computer control"; clicked => root.computer_control(); }
-                    Button { text: "◉   Notifications"; clicked => root.status_text = "Windows response and update notifications are enabled where supported."; }
-                    Button { text: "⚙   Settings"; clicked => root.status_text = "Configure your OpenRouter key and model IDs in this panel."; }
+                    Button { text: "◈   Workspace"; clicked => { root.status_text = "Multi-model chat workspace active."; } }
+                    Button { text: "◎   AI network"; clicked => { root.status_text = "Enter up to five OpenRouter model IDs, separated by semicolons."; } }
+                    Button { text: "▣   Computer control"; clicked => { root.computer_control(); } }
+                    Button { text: "◉   Notifications"; clicked => { root.status_text = "Windows response and update notifications are enabled where supported."; } }
+                    Button { text: "⚙   Settings"; clicked => { root.status_text = "Configure your OpenRouter key and model IDs in this panel."; } }
 
                     Rectangle { height: 1px; background: #24334a; }
                     Text { text: "OPENROUTER CONNECTION"; color: #7f9bbb; font-size: 10px; }
@@ -47,7 +47,7 @@ export component MainWindow inherits Window {
                         placeholder-text: "Paste API key";
                         input-type: password;
                     }
-                    Button { text: "Save API key"; clicked => root.save_key(root.api_key_input); }
+                    Button { text: "Save API key"; clicked => { root.save_key(root.api_key_input); } }
                     Text {
                         text: "Session-only storage. Your key is not sent to ONE BRAIN servers.";
                         color: #8193a9; font-size: 10px; wrap: word-wrap;
@@ -63,7 +63,7 @@ export component MainWindow inherits Window {
                         color: #8193a9; font-size: 10px; wrap: word-wrap;
                     }
                     Rectangle { height: 1px; background: #24334a; }
-                    Button { text: "Check for updates"; clicked => root.check_updates(); }
+                    Button { text: "Check for updates"; clicked => { root.check_updates(); } }
                     Text { text: "v0.1.0 · RUST CORE"; color: #60758f; font-size: 10px; }
                     Rectangle { height: 1px; background: #24334a; }
                     Text { text: "Independent project. Provider access and model availability depend on OpenRouter."; color: #71859e; font-size: 10px; wrap: word-wrap; }
@@ -103,7 +103,7 @@ export component MainWindow inherits Window {
                         HorizontalLayout {
                             padding: 12px; spacing: 10px;
                             LineEdit { text <=> root.prompt; placeholder-text: "Ask all selected models…"; horizontal-stretch: 1; }
-                            Button { text: "Run models  ➤"; clicked => root.send_prompt(root.prompt, root.model_id); }
+                            Button { text: "Run models  ➤"; clicked => { root.send_prompt(root.prompt, root.model_id); } }
                         }
                     }
 
