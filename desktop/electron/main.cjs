@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell, safeStorage, screen } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const fs = require("node:fs/promises");
@@ -11,6 +11,8 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();
 else app.on("second-instance", () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
 let workspace = app.getPath("documents");
+let screenCaptureMetrics = { imageWidth: 1280, imageHeight: 720 };
+const apiKeyFile = path.join(app.getPath("userData"), "openrouter-key.enc");
 let stopRequested = false;
 let running = false;
 let updateState = { status: "idle", message: "Updates have not been checked yet.", version: null, percent: 0 };
@@ -66,6 +68,24 @@ ipcMain.handle("updates:download", async () => {
 ipcMain.handle("updates:install", () => {
   if (updateState.status !== "downloaded") throw new Error("Download the update before installing it.");
   setImmediate(() => autoUpdater.quitAndInstall(false, true)); return { ok: true };
+});
+ipcMain.handle("settings:api-key:get", async () => {
+  if (!safeStorage.isEncryptionAvailable()) return { key: "", persisted: false, available: false };
+  try {
+    const encrypted = await fs.readFile(apiKeyFile);
+    return { key: safeStorage.decryptString(encrypted), persisted: true, available: true };
+  } catch (error) {
+    if (error && error.code === "ENOENT") return { key: "", persisted: false, available: true };
+    throw error;
+  }
+});
+ipcMain.handle("settings:api-key:set", async (_event, value) => {
+  const key = String(value || "").trim();
+  if (!key || key.length > 500) throw new Error("Enter a valid API key.");
+  if (!safeStorage.isEncryptionAvailable()) throw new Error("Windows secure storage is unavailable. The API key was not saved.");
+  await fs.mkdir(path.dirname(apiKeyFile), { recursive: true });
+  await fs.writeFile(apiKeyFile, safeStorage.encryptString(key), { mode: 0o600 });
+  return { saved: true, encrypted: true };
 });
 ipcMain.handle("workspace:get", () => workspace);
 ipcMain.handle("workspace:choose", async () => {
@@ -125,20 +145,33 @@ function withinWorkspace(candidate) {
   if (relative.startsWith("..") || path.isAbsolute(relative)) throw new Error("Access outside the selected workspace is blocked.");
   return resolved;
 }
-async function captureScreen() {
+async function captureScreen(sendEvent = true) {
+  const display = screen.getPrimaryDisplay();
   const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: 1280, height: 720 } });
   if (!sources.length) throw new Error("No screen source is available.");
-  const image = sources[0].thumbnail.toDataURL();
-  emit("screen", "Desktop preview refreshed.", { image });
-  return { ok: true, width: sources[0].thumbnail.getSize().width, height: sources[0].thumbnail.getSize().height, image };
+  const source = sources.find(item => item.display_id === String(display.id)) || sources[0];
+  const size = source.thumbnail.getSize();
+  screenCaptureMetrics = { imageWidth: size.width, imageHeight: size.height, screenWidth: display.size.width, screenHeight: display.size.height };
+  const image = source.thumbnail.toDataURL();
+  if (sendEvent) emit("screen", "Desktop screenshot captured for visual inspection.", { image, width: size.width, height: size.height });
+  return { ok: true, width: size.width, height: size.height, displayWidth: display.size.width, displayHeight: display.size.height, image };
 }
 async function computerAction(kind, args) {
   const { mouse, keyboard, Button, Key, Point, straightTo } = require("@nut-tree-fork/nut-js");
   if (kind === "click") {
-    const x = Math.max(0, Math.min(10000, Number(args.x)));
-    const y = Math.max(0, Math.min(10000, Number(args.y)));
-    await mouse.move(straightTo(new Point(x, y))); await mouse.click(Button.LEFT);
-    return { ok: true, action: "left_click", x, y };
+    const x = Number(args.x), y = Number(args.y);
+    const imageWidth = screenCaptureMetrics.imageWidth || 1280;
+    const imageHeight = screenCaptureMetrics.imageHeight || 720;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= imageWidth || y >= imageHeight) throw new Error("Click coordinates are outside the latest desktop screenshot.");
+    const display = screen.getPrimaryDisplay().size;
+    const screenX = Math.max(0, Math.min(display.width - 1, Math.round(x * display.width / imageWidth)));
+    const screenY = Math.max(0, Math.min(display.height - 1, Math.round(y * display.height / imageHeight)));
+    const xPercent = x / imageWidth * 100, yPercent = y / imageHeight * 100;
+    await mouse.move(straightTo(new Point(screenX, screenY)));
+    emit("cursor", "Custom pointer moved to the selected desktop target.", { xPercent, yPercent, clicked: false });
+    await mouse.click(Button.LEFT);
+    emit("cursor", "Desktop click completed.", { xPercent, yPercent, clicked: true });
+    return { ok: true, action: "left_click", screenshotX: x, screenshotY: y, screenX, screenY, screenshotSize: { width: imageWidth, height: imageHeight }, screenSize: display };
   }
   if (kind === "type") {
     const value = String(args.text || "").slice(0, 1000);
@@ -153,41 +186,26 @@ async function computerAction(kind, args) {
     return { ok: true, key: String(args.key).toUpperCase() };
   }
 }
-async function approveAction(description) {
-  const result = await dialog.showMessageBox(mainWindow, {
-    type: "question", buttons: ["Allow once", "Deny"], defaultId: 1, cancelId: 1,
-    title: "ONE BRAIN permission request", message: description,
-    detail: "This action will be performed on your computer. Approve only if you understand what it will do."
-  });
-  return result.response === 0;
-}
 const toolSpecs = [
   { type: "function", function: { name: "computer_screenshot", description: "Capture the current desktop and show it in the live preview.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
-  { type: "function", function: { name: "computer_click", description: "Click a screen coordinate. Requires user approval.", parameters: { type: "object", properties: { x: { type: "integer" }, y: { type: "integer" } }, required: ["x","y"], additionalProperties: false } } },
-  { type: "function", function: { name: "computer_type", description: "Type text into the currently focused application. Requires user approval.", parameters: { type: "object", properties: { text: { type: "string", maxLength: 1000 } }, required: ["text"], additionalProperties: false } } },
-  { type: "function", function: { name: "computer_press_key", description: "Press one permitted key: ENTER, TAB, ESC, SPACE, BACKSPACE, UP, DOWN, LEFT, RIGHT. Requires approval.", parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"], additionalProperties: false } } },
-  { type: "function", function: { name: "open_url", description: "Open a web address in the default browser. Requires approval.", parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"], additionalProperties: false } } },
+  { type: "function", function: { name: "computer_click", description: "Click a pixel coordinate from the latest desktop screenshot. Inspect a fresh screenshot first. Coordinates are mapped to the real display resolution; routine clicks execute immediately.", parameters: { type: "object", properties: { x: { type: "integer", minimum: 0, maximum: 1280 }, y: { type: "integer", minimum: 0, maximum: 720 } }, required: ["x","y"], additionalProperties: false } } },
+  { type: "function", function: { name: "computer_type", description: "Type text into the currently focused application immediately. Do not type passwords or payment details.", parameters: { type: "object", properties: { text: { type: "string", maxLength: 1000 } }, required: ["text"], additionalProperties: false } } },
+  { type: "function", function: { name: "computer_press_key", description: "Press one permitted key immediately: ENTER, TAB, ESC, SPACE, BACKSPACE, UP, DOWN, LEFT, RIGHT.", parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"], additionalProperties: false } } },
+  { type: "function", function: { name: "open_url", description: "Open an HTTP or HTTPS web address in the default browser immediately.", parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"], additionalProperties: false } } },
   { type: "function", function: { name: "list_workspace", description: "List files and folders in the selected workspace or a relative subfolder.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } },
   { type: "function", function: { name: "read_text_file", description: "Read a small text file inside the selected workspace.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false } } },
   { type: "function", function: { name: "run_safe_command", description: "Run a read-only diagnostic command from the permitted list. Requires approval.", parameters: { type: "object", properties: { command: { type: "string", enum: ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"] } }, required: ["command"], additionalProperties: false } } },
   { type: "function", function: { name: "get_system_overview", description: "Read basic PC hardware, memory, uptime and local network summary.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "list_running_apps", description: "List running Windows applications and processes (read-only).", parameters: { type: "object", properties: {}, additionalProperties: false } } },
-  { type: "function", function: { name: "launch_approved_app", description: "Launch an approved built-in Windows app. Requires user approval.", parameters: { type: "object", properties: { app: { type: "string", enum: ["notepad","calculator","file_explorer","task_manager","paint","settings"] } }, required: ["app"], additionalProperties: false } } },
-  { type: "function", function: { name: "open_workspace_folder", description: "Open the selected workspace or a subfolder in File Explorer. Requires user approval.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } }
+  { type: "function", function: { name: "launch_approved_app", description: "Launch an approved built-in Windows app immediately.", parameters: { type: "object", properties: { app: { type: "string", enum: ["notepad","calculator","file_explorer","task_manager","paint","settings"] } }, required: ["app"], additionalProperties: false } } },
+  { type: "function", function: { name: "open_workspace_folder", description: "Open the selected workspace or a subfolder in File Explorer immediately.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } }
 ];
 async function executeTool(name, args) {
   if (name === "computer_screenshot") return captureScreen();
-  if (name === "computer_click" || name === "computer_type" || name === "computer_press_key") {
-    const description = name === "computer_click" ? "ONE BRAIN wants to click screen position " + args.x + ", " + args.y + "." :
-      name === "computer_type" ? "ONE BRAIN wants to type: " + String(args.text || "").slice(0, 180) :
-      "ONE BRAIN wants to press " + args.key + ".";
-    if (!await approveAction(description)) return { ok: false, denied: true, message: "User denied this action." };
-    return computerAction(name === "computer_click" ? "click" : name === "computer_type" ? "type" : "key", args);
-  }
+  if (name === "computer_click" || name === "computer_type" || name === "computer_press_key") return computerAction(name === "computer_click" ? "click" : name === "computer_type" ? "type" : "key", args);
   if (name === "open_url") {
     const parsed = new URL(args.url);
     if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Only HTTP and HTTPS links are allowed.");
-    if (!await approveAction("Open this website in your default browser?\n" + parsed.href)) return { ok: false, denied: true };
     await shell.openExternal(parsed.href); return { ok: true, url: parsed.href };
   }
   if (name === "list_workspace") {
@@ -215,14 +233,12 @@ async function executeTool(name, args) {
     const apps = { notepad: "notepad.exe", calculator: "calc.exe", file_explorer: "explorer.exe", task_manager: "taskmgr.exe", paint: "mspaint.exe", settings: "ms-settings:" };
     const target = apps[args.app];
     if (!target) throw new Error("This app is not on the approved launch list.");
-    if (!await approveAction("ONE BRAIN wants to open " + args.app.replace(/_/g, " ") + ".")) return { ok: false, denied: true };
     if (target.endsWith(":")) await shell.openExternal(target);
     else { const child = spawn(target, [], { detached: true, stdio: "ignore", windowsHide: false }); child.unref(); }
     return { ok: true, launched: args.app };
   }
   if (name === "open_workspace_folder") {
     const target = withinWorkspace(args.path || ".");
-    if (!await approveAction("Open this folder in File Explorer?\n" + target)) return { ok: false, denied: true };
     const error = await shell.openPath(target);
     if (error) throw new Error(error);
     return { ok: true, path: target };
@@ -230,12 +246,12 @@ async function executeTool(name, args) {
   if (name === "run_safe_command") {
     const allowed = ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"];
     if (!allowed.includes(args.command)) throw new Error("Command is not permitted.");
-    if (!await approveAction("Run this read-only Windows diagnostic command?\n" + args.command)) return { ok: false, denied: true };
     const result = await execFileAsync("cmd.exe", ["/d", "/s", "/c", args.command], { windowsHide: true, timeout: 15000, maxBuffer: 50000 });
     return { stdout: result.stdout.slice(0, 12000), stderr: result.stderr.slice(0, 3000) };
   }
   throw new Error("Unknown tool: " + name);
 }
+ipcMain.handle("screen:capture", async () => captureScreen(false));
 ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
   if (running) throw new Error("An agent task is already running.");
   if (!task || !String(task).trim()) throw new Error("Enter a task first.");
@@ -243,7 +259,7 @@ ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
   running = true; stopRequested = false;
   const chosenModel = model || "openai/gpt-4o";
   const messages = [
-    { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshot, mouse click, keyboard typing/key, approved app launching, running-app listing, workspace file listing/reading/folder opening, approved website opening, and read-only diagnostics tools. Inspect before acting, use the appropriate tool, verify outcomes, and report clearly. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Ask before every click, keystroke, URL open, or diagnostic command. The selected workspace is the only file area you may inspect. If a tool is denied, do not retry it. Stop when asked." },
+    { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshots, accurately mapped mouse clicks, keyboard typing/keys, approved built-in app launching, running-app listing, workspace file listing/reading/folder opening, website opening, and read-only diagnostics. Inspect a fresh screenshot before clicking, use screenshot pixel coordinates, verify every action with another screenshot, and report clearly. Execute routine requested actions directly without asking for repeated confirmation. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Destructive or security-sensitive actions are unavailable. The selected workspace is the only file area you may inspect. Stop when asked." },
     { role: "user", content: String(task).slice(0, 6000) }
   ];
   try {
