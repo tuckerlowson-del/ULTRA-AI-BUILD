@@ -150,6 +150,14 @@ pub fn run() {
         });
     });
 
+    let weak_for_maximize = ui.as_weak();
+    ui.on_toggle_maximize(move || {
+        if let Some(window) = weak_for_maximize.upgrade() {
+            let native_window = window.window();
+            native_window.set_maximized(!native_window.is_maximized());
+        }
+    });
+
     let weak_for_fullscreen = ui.as_weak();
     ui.on_toggle_fullscreen(move || {
         if let Some(window) = weak_for_fullscreen.upgrade() {
@@ -359,7 +367,7 @@ pub fn run() {
                         }
                     }
                 });
-                if result.is_ok() { std::thread::sleep(std::time::Duration::from_millis(700)); std::process::exit(0); }
+                if install_started { std::thread::sleep(std::time::Duration::from_millis(700)); std::process::exit(0); }
             });
         }
         #[cfg(not(windows))]
