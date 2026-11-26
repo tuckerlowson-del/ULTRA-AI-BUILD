@@ -14,6 +14,7 @@ jobs:
     runs-on: windows-latest
     env:
       VITE_BUILD_NUMBER: ${{ github.run_number }}
+      VITE_APP_VERSION: 0.6.1.${{ github.run_number }}
     defaults:
       run:
         working-directory: desktop
