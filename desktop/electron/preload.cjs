@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("onebrain", {
   getUpdateStatus: () => ipcRenderer.invoke("updates:get"),
+  getApiKey: () => ipcRenderer.invoke("settings:api-key:get"),
+  saveApiKey: (key) => ipcRenderer.invoke("settings:api-key:set", key),
+  captureScreen: () => ipcRenderer.invoke("screen:capture"),
   checkForUpdates: () => ipcRenderer.invoke("updates:check"),
   downloadUpdate: () => ipcRenderer.invoke("updates:download"),
   installUpdate: () => ipcRenderer.invoke("updates:install"),
