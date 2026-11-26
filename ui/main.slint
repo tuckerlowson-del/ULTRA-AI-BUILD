@@ -70,7 +70,7 @@ export component MainWindow inherits Window {
     callback computer_control();
     callback clear_conversation();
     callback toggle_notifications(bool);
-    callback toggle_fullscreen();\n    callback discover_models();\n    callback install_update();
+    callback toggle_fullscreen();\n    callback toggle_maximize();\n    callback discover_models();\n    callback install_update();
 
     Rectangle {
         background: #08111c;
@@ -141,7 +141,7 @@ export component MainWindow inherits Window {
                             Text { text: "A unified space for connected intelligence"; color: #829bb5; font-size: 11px; }
                         }
                         Rectangle { horizontal-stretch: 1; }
-                        OBButton { label: "□  Maximize"; compact: true; width: 100px; clicked => { root.toggle_fullscreen(); } }\n                        OBButton { label: "⛶  Fullscreen"; compact: true; width: 105px; clicked => { root.toggle_fullscreen(); } }
+                        OBButton { label: "□  Maximize"; compact: true; width: 100px; clicked => { root.toggle_maximize(); } }\n                        OBButton { label: "⛶  Fullscreen"; compact: true; width: 105px; clicked => { root.toggle_fullscreen(); } }
                         Rectangle {
                             background: #142b36; border-radius: 20px; border-width: 1px; border-color: #245347; width: 126px; height: 30px;
                             Text { text: "●  PRIVATE SESSION"; color: #6fe0be; font-size: 9px; horizontal-alignment: center; vertical-alignment: center; }
