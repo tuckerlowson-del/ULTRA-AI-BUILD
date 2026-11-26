@@ -10,6 +10,7 @@ import androidx.core.content.FileProvider;
 import java.io.*;
 import java.net.*;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
@@ -83,6 +84,7 @@ public class ApkInstallerPlugin extends Plugin {
                 if (localAddress != null) break;
             }
             JSArray devices = new JSArray();
+            HashSet<String> seenIps = new HashSet<>();
             if (localAddress != null) {
                 JSObject local = new JSObject();
                 local.put("ip", localAddress);
@@ -90,6 +92,7 @@ public class ApkInstallerPlugin extends Plugin {
                 local.put("kind", "Local device");
                 local.put("local", true);
                 devices.put(local);
+                seenIps.add(localAddress);
             }
             File arp = new File("/proc/net/arp");
             if (arp.isFile()) {
@@ -107,12 +110,7 @@ public class ApkInstallerPlugin extends Plugin {
                             (octets[0].equals("172") && Integer.parseInt(octets[1]) >= 16 && Integer.parseInt(octets[1]) <= 31) ||
                             (octets[0].equals("192") && octets[1].equals("168"));
                         if (!privateIp || ip.equals(localAddress)) continue;
-                        boolean duplicate = false;
-                        for (int i = 0; i < devices.length(); i++) {
-                            JSObject existing = devices.getJSONObject(i);
-                            if (ip.equals(existing.optString("ip"))) { duplicate = true; break; }
-                        }
-                        if (duplicate) continue;
+                        if (!seenIps.add(ip)) continue;
                         JSObject device = new JSObject();
                         device.put("ip", ip);
                         device.put("mac", mac);
