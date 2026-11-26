@@ -2,6 +2,11 @@ name: ONE BRAIN Android APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main, "feature/android-capacitor"]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/android.yml"
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ jobs:
     defaults:
       run:
         working-directory: desktop
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4

@@ -1,0 +1,39 @@
+name: ONE BRAIN Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["feature/android-capacitor"]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/windows.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  windows-desktop:
+    runs-on: windows-latest
+    env:
+      VITE_BUILD_NUMBER: ${{ github.run_number }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Build React interface
+        run: npm run build
+      - name: Package Windows installer
+        run: npm run dist:win
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ONE-BRAIN-WINDOWS-DEV-BUILD-${{ github.run_number }}
+          path: desktop/dist-installer/*.exe
+          if-no-files-found: error
+          retention-days: 30
