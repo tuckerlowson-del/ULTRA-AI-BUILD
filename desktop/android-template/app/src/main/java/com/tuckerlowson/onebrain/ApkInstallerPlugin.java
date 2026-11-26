@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import com.getcapacitor.*;
+import com.getcapacitor.annotation.CapacitorPlugin;
 import androidx.core.content.FileProvider;
 import java.io.*;
 import java.net.HttpURLConnection;
