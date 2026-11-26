@@ -9,6 +9,8 @@ A private multi-model AI workspace. Initial phase: OpenRouter API mode. Long-ter
 - Laptop dashboard with CPU, memory, OS, and processor statistics.
 - Separate native maximize and fullscreen controls.
 
+Update service and download site: https://one-brain-updater.tuckerlowson.workers.dev/
+
 ## Architecture
 - Rust application core with Slint native UI (no Electron).
 - Windows desktop and Android build targets.
