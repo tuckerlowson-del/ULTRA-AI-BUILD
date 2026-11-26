@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Activity, Bot, BrainCircuit, CheckCircle2, ChevronDown, CircleStop, Command, Cpu, FolderOpen, Globe, KeyRound, Monitor, Play, Plus, Send, Settings2, ShieldCheck, Sparkles, SquareTerminal, Wifi, XCircle } from "lucide-react";
+import { Activity, Bot, BrainCircuit, CheckCircle2, ChevronDown, CircleStop, Command, Cpu, FolderOpen, Globe, KeyRound, Monitor, Play, Plus, Send, Settings2, ShieldCheck, Sparkles, SquareTerminal, Wifi, XCircle, Radar, RefreshCw } from "lucide-react";
 import "./style.css";
 
 function App() {
@@ -8,7 +8,7 @@ function App() {
   const [task,setTask]=useState(""); const [events,setEvents]=useState([]); const [status,setStatus]=useState("Ready");
   const [running,setRunning]=useState(false); const [workspace,setWorkspace]=useState("Loading workspace…");
   const [preview,setPreview]=useState(""); const [page,setPage]=useState("agent");
-  const [showSettings,setShowSettings]=useState(false);
+  const [showSettings,setShowSettings]=useState(false); const [mdt,setMdt]=useState({devices:[],interfaceName:"Checking…",updatedAt:null}); const [mdtBusy,setMdtBusy]=useState(false);
   useEffect(()=>{ window.onebrain.getWorkspace().then(setWorkspace); return window.onebrain.onAgentEvent(e=>{
     setEvents(old=>[{...e,id:Date.now()+Math.random()},...old].slice(0,80));
     if(e.type==="status")setStatus(e.message);
@@ -16,9 +16,11 @@ function App() {
     if(e.type==="final")setStatus("Task completed — review the result.");
     if(e.type==="error")setStatus("Agent error");
   });},[]);
+  const refreshMdt=async()=>{setMdtBusy(true);try{setMdt(await window.onebrain.getNetworkDevices());}catch(e){setMdt(old=>({...old,error:e.message}));}finally{setMdtBusy(false);}};
+  useEffect(()=>{if(page!=="mdt")return;refreshMdt();const timer=setInterval(refreshMdt,3000);return()=>clearInterval(timer);},[page]);
   const run=async()=>{if(!task.trim())return;setRunning(true);setStatus("Agent is working…");setEvents(old=>[{id:Date.now(),type:"user",message:task,at:new Date().toISOString()},...old]);try{await window.onebrain.runAgent(task,apiKey,model);}catch(e){setStatus(e.message);}finally{setRunning(false);}};
   const choose=async()=>setWorkspace(await window.onebrain.chooseWorkspace());
-  const nav=[["agent","AI Operator",Bot],["activity","Activity",Activity],["settings","Settings",Settings2]];
+  const nav=[["agent","AI Operator",Bot],["activity","Activity",Activity],["mdt","FORD MDT",Radar],["settings","Settings",Settings2]];
   return <div className="shell">
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark"><BrainCircuit size={23}/></div><div><b>ONE BRAIN</b><small>INTELLIGENCE SYSTEM</small></div></div>
@@ -26,7 +28,7 @@ function App() {
       {nav.map(([id,label,Icon])=><button key={id} className={"nav "+(page===id?"active":"")} onClick={()=>setPage(id)}><Icon size={17}/>{label}</button>)}
       <div className="side-spacer"/>
       <div className="connection"><span className="pulse"/><div><b>LOCAL AGENT</b><small>Computer session ready</small></div></div>
-      <div className="version">DESKTOP PREVIEW · 0.4.0</div>
+      <div className="version">DEV BUILD #{import.meta.env.VITE_BUILD_NUMBER || "LOCAL"}</div>
     </aside>
     <main className="main">
       <header className="topbar"><div><div className="eyebrow">PRIVATE AI WORKSPACE</div><h1>{page==="agent"?"AI Operator":page==="activity"?"Execution activity":"Settings & connections"}</h1></div><div className="top-actions"><span className="secure"><ShieldCheck size={14}/> Permission-gated</span><button className="icon-btn" onClick={()=>setShowSettings(true)}><Settings2 size={18}/></button></div></header>
@@ -47,9 +49,9 @@ function App() {
           <div className="panel safety"><div className="safety-title"><ShieldCheck size={16}/> SAFETY CONTROLS</div><p>Clicks, typing, website launches and diagnostic commands require your approval. File access stays inside the selected workspace.</p><div className="safety-row"><CheckCircle2 size={14}/> No arbitrary shell commands</div><div className="safety-row"><CheckCircle2 size={14}/> No file deletion or password handling</div></div>
         </aside>
       </div>}
-      {page==="activity"&&<section className="activity-page"><div className="section-heading"><div><h3>Agent activity log</h3><p>Newest events first · current session only</p></div></div>{events.map(e=><Event key={e.id} event={e}/>)}</section>}
+      {page==="mdt"&&<section className="mdt-page">\n        <div className="mdt-header"><div><div className="eyebrow">FORD FIELD INTELLIGENCE</div><h2>Mobile Data Terminal</h2><p>Local network awareness · passive device discovery</p></div><button className="outline-btn mdt-refresh" onClick={refreshMdt}><RefreshCw size={14}/> Refresh now</button></div>\n        <div className="mdt-grid"><div className="panel radar-panel"><div className="panel-head"><span><Radar size={15}/> NETWORK RADAR</span><span className="live-dot">3 SEC REFRESH</span></div><div className="radar-wrap"><div className="radar-ring ring-one"/><div className="radar-ring ring-two"/><div className="radar-ring ring-three"/><div className="radar-cross horizontal"/><div className="radar-cross vertical"/><div className="radar-center"/>{mdt.devices.map((d,i)=>{const n=(d.ip||"0.0.0.0").split(".").map(Number).pop()||i+1;const angle=((n*137.5)%360)*Math.PI/180;const radius=d.local?0:30+(n%55);return <div key={d.ip} className={"radar-point "+(d.local?"local":"remote")} style={{left:(50+Math.cos(angle)*radius)+"%",top:(50+Math.sin(angle)*radius)+"%"}} title={d.name+" · "+d.ip}/>})}<div className="radar-sweep"/></div><div className="radar-legend"><span><i className="legend-blue"/> This PC</span><span><i className="legend-red"/> Detected device</span></div><div className="mdt-note">Radar positions are visual indicators only, not physical locations.</div></div><div className="panel device-panel"><div className="panel-head"><span><Wifi size={15}/> DETECTED DEVICES</span><span>{mdt.devices.length} FOUND</span></div><div className="interface-info"><small>ACTIVE LOCAL ADDRESS</small><b>{mdt.interfaceName}</b></div><div className="device-list">{mdt.devices.map(d=><div className="device-row" key={d.ip}><span className={"device-dot "+(d.local?"local":"remote")}/><div><b>{d.name}</b><small>{d.ip}</small></div><span className="device-type">{d.local?"LOCAL":"LAN"}</span></div>)}{mdt.devices.length===0&&<div className="empty">No neighbour devices currently visible.</div>}</div><div className="mdt-updated">{mdtBusy?"Refreshing…":mdt.updatedAt?"Updated "+new Date(mdt.updatedAt).toLocaleTimeString():"Waiting for scan"}</div></div></div></section>}\n      {page==="activity"&&<section className="activity-page"><div className="section-heading"><div><h3>Agent activity log</h3><p>Newest events first · current session only</p></div></div>{events.map(e=><Event key={e.id} event={e}/>)}</section>}
       {page==="settings"&&<section className="settings-page"><div className="panel"><div className="panel-head"><span><KeyRound size={15}/> OPENROUTER CONNECTION</span></div><label>API KEY</label><input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="Paste your OpenRouter key — kept in memory only"/><p className="model-note">Your key is not written to disk by this preview. API usage may incur charges; configure a spending limit in your provider account.</p><label>MODEL ID</label><input value={model} onChange={e=>setModel(e.target.value)}/></div><div className="panel"><div className="panel-head"><span><FolderOpen size={15}/> WORKSPACE ACCESS</span></div><p className="model-note">The agent can list and read text files only within the folder you select.</p><button className="outline-btn" onClick={choose}>Choose workspace</button><p className="path">{workspace}</p></div></section>}
-      <footer><span><span className="footer-led"/> SYSTEM READY</span><span>{status}</span><span>ONE BRAIN · PRIVATE BY DESIGN</span></footer>
+      <footer><span><span className="footer-led"/> SYSTEM READY</span><span>{status}</span><span>ONE BRAIN · DEV BUILD #{import.meta.env.VITE_BUILD_NUMBER || "LOCAL"}</span></footer>
     </main>
     {showSettings&&<div className="modal-backdrop" onClick={()=>setShowSettings(false)}><div className="modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setShowSettings(false)}><XCircle size={18}/></button><h2>Connect your AI</h2><p>OpenRouter provides access to the model catalogue.</p><label>API KEY</label><input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="sk-or-…"/><label>MODEL ID</label><input value={model} onChange={e=>setModel(e.target.value)}/><button className="run-btn full" onClick={()=>setShowSettings(false)}>Save for this session</button><small>Key stays in app memory and is not persisted.</small></div></div>}
   </div>;
