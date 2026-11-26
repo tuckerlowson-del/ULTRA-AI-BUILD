@@ -395,7 +395,11 @@ pub fn run() {
 
     let permission = Arc::clone(&computer_permission);
     let weak = ui.as_weak();
-    ui.on_control_move(move |x, y| {
+    ui.on_control_move(move |x_text, y_text| {
+        let (Ok(x), Ok(y)) = (x_text.parse::<i32>(), y_text.parse::<i32>()) else {
+            if let Some(w) = weak.upgrade() { w.set_control_log("Enter valid numeric screen coordinates.".into()); }
+            return;
+        };
         if !permission.load(Ordering::Relaxed) {
             if let Some(w) = weak.upgrade() { w.set_control_log("Blocked: enable control first.".into()); }
             return;
