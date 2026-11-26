@@ -9,13 +9,14 @@ on:
       - ".github/workflows/windows.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   windows-desktop:
     runs-on: windows-latest
     env:
       VITE_BUILD_NUMBER: ${{ github.run_number }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     defaults:
       run:
         working-directory: desktop
@@ -34,6 +35,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ONE-BRAIN-WINDOWS-DEV-BUILD-${{ github.run_number }}
-          path: desktop/dist-installer/*.exe
+          path: |
+            desktop/dist-installer/*.exe
+            desktop/dist-installer/latest.yml
+            desktop/dist-installer/*.blockmap
           if-no-files-found: error
           retention-days: 30

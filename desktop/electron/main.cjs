@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const { execFile } = require("node:child_process");
@@ -9,6 +10,23 @@ let mainWindow;
 let workspace = app.getPath("documents");
 let stopRequested = false;
 let running = false;
+let updateState = { status: "idle", message: "Updates have not been checked yet.", version: null, percent: 0 };
+function emitUpdate(status, message, extra = {}) {
+  updateState = { ...updateState, status, message, ...extra };
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("updates:status", updateState);
+}
+function configureAutoUpdates() {
+  if (!app.isPackaged || process.platform !== "win32") { emitUpdate("unsupported", "Automatic updates are available in the installed Windows version."); return; }
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on("checking-for-update", () => emitUpdate("checking", "Checking GitHub Releases for updates…"));
+  autoUpdater.on("update-available", info => emitUpdate("available", "Version " + info.version + " is available.", { version: info.version, percent: 0 }));
+  autoUpdater.on("update-not-available", info => emitUpdate("current", "You are using the latest version (" + info.version + ").", { version: info.version, percent: 0 }));
+  autoUpdater.on("download-progress", progress => emitUpdate("downloading", "Downloading update… " + Math.round(progress.percent) + "%", { percent: Math.round(progress.percent) }));
+  autoUpdater.on("update-downloaded", info => emitUpdate("downloaded", "Version " + info.version + " is ready to install.", { version: info.version, percent: 100 }));
+  autoUpdater.on("error", error => emitUpdate("error", "Update failed: " + (error && error.message ? error.message : String(error))));
+  setTimeout(() => { autoUpdater.checkForUpdates().catch(error => emitUpdate("error", "Update check failed: " + error.message)); }, 8000);
+}
 
 function emit(type, message, extra = {}) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("agent:event", { type, message, ...extra, at: new Date().toISOString() });
@@ -25,9 +43,26 @@ function createWindow() {
 }
 app.whenReady().then(() => {
   createWindow();
+  configureAutoUpdates();
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
+ipcMain.handle("updates:get", () => updateState);
+ipcMain.handle("updates:check", async () => {
+  if (!app.isPackaged || process.platform !== "win32") return { ...updateState, status: "unsupported", message: "Install the Windows desktop version to use automatic updates." };
+  emitUpdate("checking", "Checking GitHub Releases for updates…");
+  try { await autoUpdater.checkForUpdates(); } catch (error) { emitUpdate("error", "Update check failed: " + error.message); }
+  return updateState;
+});
+ipcMain.handle("updates:download", async () => {
+  if (updateState.status !== "available") throw new Error("There is no available update to download.");
+  try { await autoUpdater.downloadUpdate(); return { ok: true }; }
+  catch (error) { emitUpdate("error", "Download failed: " + error.message); throw error; }
+});
+ipcMain.handle("updates:install", () => {
+  if (updateState.status !== "downloaded") throw new Error("Download the update before installing it.");
+  setImmediate(() => autoUpdater.quitAndInstall(false, true)); return { ok: true };
+});
 ipcMain.handle("workspace:get", () => workspace);
 ipcMain.handle("workspace:choose", async () => {
   const result = await dialog.showOpenDialog(mainWindow, { properties: ["openDirectory", "createDirectory"] });

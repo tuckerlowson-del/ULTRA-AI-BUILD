@@ -1,6 +1,6 @@
 {
   "name": "one-brain-desktop",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "ONE BRAIN AI workspace and computer operator",
   "main": "electron/main.cjs",
@@ -9,7 +9,7 @@
     "desktop": "electron .",
     "start": "concurrently -k \"npm:dev\" \"npm:desktop\"",
     "build": "vite build",
-    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:win": "npm run build && electron-builder --win nsis --publish always",
     "dist:dir": "npm run build && electron-builder --win dir",
     "android:sync": "cap sync android"
   },
@@ -19,7 +19,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "@capacitor/android": "^6.2.1",
-    "@capacitor/core": "^6.2.1"
+    "@capacitor/core": "^6.2.1",
+    "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
@@ -45,12 +46,20 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "ONE-BRAIN-DEV-BUILD-${env.VITE_BUILD_NUMBER}.${ext}"
+      "artifactName": "ONE-BRAIN-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "tuckerlowson-del",
+        "repo": "ULTRA-AI-BUILD",
+        "releaseType": "release"
+      }
+    ]
   }
 }
