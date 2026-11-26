@@ -377,6 +377,32 @@ pub fn run() {
         }
     });
 
+    let weak_for_stats = ui.as_weak();
+    ui.on_refresh_system_stats(move || {
+        let weak = weak_for_stats.clone();
+        std::thread::spawn(move || {
+            #[cfg(windows)]
+            let stats = {
+                use sysinfo::System;
+                let mut system = System::new_all();
+                system.refresh_all();
+                let cpu = system.cpus().iter().map(|c| c.cpu_usage()).sum::<f32>()
+                    / system.cpus().len().max(1) as f32;
+                let used = system.used_memory() / 1024 / 1024;
+                let total = system.total_memory() / 1024 / 1024;
+                let os = System::long_os_version().unwrap_or_else(|| "Windows".to_string());
+                format!("{} | CPU {:.0}% | RAM {} / {} MB | {} logical CPUs", os, cpu, used, total, system.cpus().len())
+            };
+            #[cfg(not(windows))]
+            let stats = "System stats are available in the Windows desktop build.".to_string();
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(window) = weak.upgrade() {
+                    window.set_system_stats(stats.into());
+                }
+            });
+        });
+    });
+
     let weak_for_control = ui.as_weak();
     let permission = Arc::clone(&computer_permission);
     ui.on_computer_control(move || {
