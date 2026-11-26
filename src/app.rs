@@ -88,6 +88,14 @@ pub fn run() {
         });
     });
 
+    let weak_for_fullscreen = ui.as_weak();
+    ui.on_toggle_fullscreen(move || {
+        if let Some(window) = weak_for_fullscreen.upgrade() {
+            let native_window = window.window();
+            native_window.set_fullscreen(!native_window.is_fullscreen());
+        }
+    });
+
     let notification_state = Arc::clone(&notifications);
     ui.on_toggle_notifications(move |enabled| {
         notification_state.store(enabled, Ordering::Relaxed);
