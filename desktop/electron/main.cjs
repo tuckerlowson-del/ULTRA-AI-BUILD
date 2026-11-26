@@ -3,6 +3,7 @@ const path = require("node:path");
 const fs = require("node:fs/promises");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
+const os = require("node:os");
 const execFileAsync = promisify(execFile);
 let mainWindow;
 let workspace = app.getPath("documents");
@@ -34,6 +35,29 @@ ipcMain.handle("workspace:choose", async () => {
   return workspace;
 });
 ipcMain.on("agent:stop", () => { stopRequested = true; emit("status", "Stop requested. Finishing the current safe operation…"); });
+ipcMain.handle("mdt:network", async () => {
+  const interfaces = Object.values(os.networkInterfaces()).flat().filter(item => item && item.family === "IPv4" && !item.internal);
+  const local = interfaces[0] || null;
+  let arpText = "";
+  try {
+    const result = await execFileAsync("arp", ["-a"], { windowsHide: true, timeout: 5000, maxBuffer: 30000 });
+    arpText = result.stdout || "";
+  } catch {}
+  const found = new Map();
+  const rowPattern = /((?:\\d{1,3}\\.){3}\\d{1,3})\\s+([0-9a-f-]{11,17})/ig;
+  for (const match of arpText.matchAll(rowPattern)) {
+    const ip = match[1];
+    const mac = match[2].replace(/-/g, ":").toLowerCase();
+    const octets = ip.split(".").map(Number);
+    const privateAddress = octets[0] === 10 || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) || (octets[0] === 192 && octets[1] === 168);
+    if (privateAddress && mac !== "ff:ff:ff:ff:ff:ff" && !mac.startsWith("01:00:5e")) found.set(ip, { ip, mac, kind: "Network device" });
+  }
+  const devices = [];
+  if (local) devices.push({ ip: local.address, name: "This PC", kind: "Local device", local: true });
+  for (const device of found.values()) if (!local || device.ip !== local.address) devices.push({ ...device, name: "Detected device", local: false });
+  return { devices, interfaceName: local ? local.address : "No active IPv4 interface", updatedAt: new Date().toISOString(), method: "Local ARP neighbour table" };
+});
+
 
 function withinWorkspace(candidate) {
   const resolved = path.resolve(workspace, candidate || ".");
