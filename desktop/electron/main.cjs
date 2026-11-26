@@ -147,7 +147,7 @@ ipcMain.handle("mdt:network", async () => {
     if (!responders.has(ip) && !mac) continue;
     devices.push({ ip, mac: mac || null, name: "LAN device", kind: "Detected device", local: false });
   }
-  mdtCache = { devices, interfaceName: local.address, networkRange: base + ".0/24", updatedAt: new Date().toISOString(), method: "Private LAN ICMP discovery + ARP neighbour table", scanNote: "Only the local /24 was checked. No ports were scanned and no devices were accessed." };
+  mdtCache = { devices, interfaceName: local.address, networkRange: base + ".0/24", updatedAt: new Date().toISOString(), method: "CMD arp -a + Windows neighbour cache + local ping discovery", scanNote: "Device list is built from the Windows ARP table (arp -a) and neighbour cache for the active local /24. Devices hidden by router isolation or not visible to this PC may not appear. No ports were scanned and no devices were accessed." };
   mdtCacheAt = Date.now();
   return mdtCache;
 });
