@@ -1,4 +1,4 @@
-name: ONE BRAIN builds
+name: ONE BRAIN desktop builds
 
 on:
   push:
@@ -10,73 +10,41 @@ permissions:
   contents: write
 
 jobs:
-  windows:
+  windows-desktop:
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Build Windows desktop app
-        run: cargo build --release --bin one-brain
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Install dependencies
+        run: npm install
+      - name: Build React interface
+        run: npm run build
+      - name: Package Windows installer
+        run: npm run dist:win
       - uses: actions/upload-artifact@v4
         with:
-          name: one-brain-windows-x64
-          path: target/release/one-brain.exe
-          if-no-files-found: error
-          retention-days: 30
-
-  android:
-    runs-on: ubuntu-latest
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-      - name: Configure stable Android SDK tools
-        run: |
-          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
-          test -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platform-tools" "platforms;android-35" "ndk;27.2.12479018"
-          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
-      - name: Install cargo-apk2
-        run: cargo install cargo-apk2 --locked
-      - name: Build Android APK
-        run: cargo apk2 build --target aarch64-linux-android --lib
-      - name: Locate APK
-        run: |
-          mkdir -p dist
-          find target -type f -name "*.apk" -print -exec cp {} dist/ONE-BRAIN-Android-arm64.apk \;
-          test -f dist/ONE-BRAIN-Android-arm64.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: one-brain-android-arm64
-          path: dist/ONE-BRAIN-Android-arm64.apk
+          name: one-brain-windows-installer
+          path: desktop/dist-installer/*.exe
           if-no-files-found: error
           retention-days: 30
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && github.event.head_commit.message == 'Release ONE BRAIN v0.3.0')
-    needs: [windows, android]
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows-desktop]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
+          name: one-brain-windows-installer
           path: release-assets
-      - name: Flatten release files
-        run: |
-          mkdir -p dist
-          find release-assets -type f \( -name "*.exe" -o -name "*.apk" \) -exec cp {} dist/ \;
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.3.0' }}
-          target_commitish: main
+          files: release-assets/*
           generate_release_notes: true
