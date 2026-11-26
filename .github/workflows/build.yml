@@ -77,7 +77,7 @@ jobs:
           retention-days: 30
 
   publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     needs: [windows-desktop, android-apk]
     runs-on: ubuntu-latest
     steps:
@@ -91,5 +91,9 @@ jobs:
           path: release-assets
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('dev-build-{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('ONE BRAIN DEV BUILD #{0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
           files: release-assets/*
           generate_release_notes: true
