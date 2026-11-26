@@ -59,6 +59,11 @@ export component MainWindow inherits Window {
     in-out property <string> prompt: "";
     in-out property <string> api_key_input: "";
     in-out property <string> model_id: "openai/gpt-4o-mini";\n    in-out property <string> available_models: "Save your key and click Load all models.";\n    in-out property <bool> update_available: false;
+    in-out property <bool> control_enabled: false;
+    in-out property <string> control_text: "";
+    in-out property <string> control_log: "Computer control is off.";
+    in-out property <string> cursor_x: "500";
+    in-out property <string> cursor_y: "350";
     in-out property <string> status_text: "SYSTEM READY  /  API NOT CONNECTED";
     in-out property <string> active_page: "workspace";
     in-out property <bool> notifications_enabled: true;
@@ -71,6 +76,10 @@ export component MainWindow inherits Window {
     callback clear_conversation();
     callback toggle_notifications(bool);
     callback toggle_fullscreen();\n    callback toggle_maximize();\n    callback discover_models();\n    callback install_update();
+    callback control_move(string, string);
+    callback control_click();
+    callback control_type(string);
+    callback control_enter();
 
     Rectangle {
         background: #08111c;
@@ -244,8 +253,27 @@ export component MainWindow inherits Window {
                         background: #142437; border-radius: 14px; border-width: 1px; border-color: #263f58;
                         VerticalLayout {
                             padding: 22px; spacing: 12px;
-                            Text { text: "CONTROL IS CURRENTLY LOCKED"; color: #f0f6ff; font-size: 17px; font-weight: 700; }
-                            Text { text: "This preview does not execute computer actions. A future version will use explicit permission prompts, visible action logs, and confirmation before sensitive operations."; color: #9bb0c6; font-size: 12px; wrap: word-wrap; }
+                            Text { text: "MANUAL COMPUTER CONTROL"; color: #f0f6ff; font-size: 17px; font-weight: 700; }
+                            Text { text: "Enable control to send individual mouse and keyboard actions. The physical cursor remains visible. Emergency stop blocks further actions."; color: #9bb0c6; font-size: 12px; wrap: word-wrap; }
+                            HorizontalLayout {
+                                OBButton { label: root.control_enabled ? "Disable control" : "Enable control"; width: 150px; primary: root.control_enabled; clicked => { root.computer_control(); } }
+                                OBButton { label: "EMERGENCY STOP"; width: 170px; clicked => { if root.control_enabled { root.computer_control(); } } }
+                            }
+                            Text { text: "MOUSE SCREEN POSITION (PIXELS)"; color: #83a3c2; font-size: 10px; }
+                            HorizontalLayout {
+                                LineEdit { text <=> root.cursor_x; placeholder-text: "X"; width: 100px; }
+                                LineEdit { text <=> root.cursor_y; placeholder-text: "Y"; width: 100px; }
+                                OBButton { label: "Move cursor"; width: 140px; clicked => { root.control_move(root.cursor_x, root.cursor_y); } }
+                                OBButton { label: "Left click"; width: 120px; clicked => { root.control_click(); } }
+                            }
+                            Text { text: "KEYBOARD INPUT"; color: #83a3c2; font-size: 10px; }
+                            LineEdit { text <=> root.control_text; placeholder-text: "Type text into the currently focused app…"; }
+                            HorizontalLayout {
+                                OBButton { label: "Type text"; width: 130px; primary: true; clicked => { root.control_type(root.control_text); root.control_text = ""; } }
+                                OBButton { label: "Press Enter"; width: 130px; clicked => { root.control_enter(); } }
+                            }
+                            Rectangle { background: #0b1927; border-radius: 9px; padding: 10px; Text { text: root.control_log; color: #8ee0cc; font-size: 11px; wrap: word-wrap; } }
+                            Text { text: "Use only on your own device. Do not automate passwords, payment details, or private information."; color: #d6b17c; font-size: 10px; wrap: word-wrap; }
                             OBButton { label: "Back to workspace"; width: 170px; clicked => { root.active_page = "workspace"; } }
                         }
                     }
