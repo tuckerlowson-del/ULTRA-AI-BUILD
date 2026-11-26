@@ -1,31 +1,48 @@
 # ONE BRAIN
 
-A private multi-model AI workspace. Initial phase: OpenRouter API mode. Long-term phase: an independently hosted model on Oracle Cloud Linux.
+ONE BRAIN is a private AI workspace and desktop operator.
 
-## Version 0.3.0 preview
-- OpenRouter model catalogue discovery and multi-model requests.
-- Windows in-app updater through the Cloudflare Worker at `one-brain-updater.tuckerlowson.workers.dev`.
-- Manual Windows mouse and keyboard control with explicit enable/disable and emergency stop.
-- Laptop dashboard with CPU, memory, OS, and processor statistics.
-- Separate native maximize and fullscreen controls.
+## Desktop preview 0.4.0
 
-Update service and download site: https://one-brain-updater.tuckerlowson.workers.dev/
+The active Windows desktop app is being rebuilt with **Electron + React + JavaScript/TypeScript + CSS**. Rust and Slint are no longer the desktop UI stack.
 
-## Architecture
-- Rust application core with Slint native UI (no Electron).
-- Windows desktop and Android build targets.
-- OpenRouter-compatible model access.
-- GitHub Actions builds Windows EXE and Android APK artifacts/releases.
-- Cloudflare website with direct download routes and release update proxy.
+### Current foundation
+- Custom React desktop workspace with a responsive dark interface.
+- Electron main/preload separation with context isolation and Node integration disabled in the renderer.
+- OpenRouter model routing; the model ID is configurable.
+- Agent task loop with tool calls, progress events, a live desktop preview, and a bounded execution loop.
+- Computer screenshot, mouse click, typing, and permitted key actions.
+- Workspace-scoped file listing and text reading.
+- Read-only Windows diagnostic commands from a fixed allowlist.
+- User approval prompts before computer input, external URLs, and diagnostic commands.
+- Stop control and activity timeline.
 
-## Build
-- Windows: `cargo build --release --bin one-brain`
-- Android ARM64: `cargo apk2 build --target aarch64-linux-android --lib --release`
+### Important preview limitations
+- This is an early foundation, not a finished Grok Bot equivalent.
+- The computer-input module and packaging still need CI verification on Windows.
+- The screenshot is displayed in the UI; the selected OpenRouter model must support image input for visual reasoning.
+- The agent cannot delete files, install applications, change security settings, or execute arbitrary shell commands.
+- The Android app is not migrated to this stack yet.
 
-## Secrets
-Configure `GITHUB_TOKEN` as a Cloudflare Pages/Worker secret with read-only access to this repository's releases. Configure `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as GitHub Actions secrets for website deployment. Never commit tokens or API keys.
+## Run locally
 
-The preview stores the OpenRouter key in memory only for the current app session. Use provider spending limits. Computer control is manual and permission-gated. Enable it before sending individual mouse or keyboard events, and use Emergency Stop to disable further input. Avoid automated entry of passwords or payment details.
+From the `desktop` directory:
 
-## UI licensing
-The app uses Slint. Review its royalty-free application license and attribution requirements before distribution; see `NOTICE.md`.
+```bash
+npm install
+npm start
+```
+
+Build a Windows installer:
+
+```bash
+npm run dist:win
+```
+
+## OpenRouter
+
+Add an OpenRouter API key inside the app. The desktop preview keeps it in memory for the current session and does not write it to disk. Model requests can incur charges; set a provider spending limit. Never paste API keys into chat or commit them to source control.
+
+## Security
+
+The Electron renderer uses context isolation and a preload bridge. File inspection is limited to the selected workspace. Computer input and external actions require a confirmation dialog. Only a fixed list of read-only diagnostic commands is exposed.
