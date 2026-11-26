@@ -74,27 +74,48 @@ ipcMain.handle("workspace:choose", async () => {
   return workspace;
 });
 ipcMain.on("agent:stop", () => { stopRequested = true; emit("status", "Stop requested. Finishing the current safe operation…"); });
+let mdtCache = null;
+let mdtCacheAt = 0;
 ipcMain.handle("mdt:network", async () => {
-  const interfaces = Object.values(os.networkInterfaces()).flat().filter(item => item && item.family === "IPv4" && !item.internal);
+  if (mdtCache && Date.now() - mdtCacheAt < 15000) return { ...mdtCache, cached: true };
+  const interfaces = Object.values(os.networkInterfaces()).flat().filter(item =>
+    item && item.family === "IPv4" && !item.internal &&
+    (/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)/.test(item.address))
+  );
   const local = interfaces[0] || null;
+  if (!local) return { devices: [], interfaceName: "No active private IPv4 network", updatedAt: new Date().toISOString(), method: "No private LAN interface found" };
+  const ipParts = local.address.split(".").map(Number);
+  const base = ipParts.slice(0, 3).join(".");
+  const candidates = Array.from({ length: 254 }, (_, i) => base + "." + (i + 1)).filter(ip => ip !== local.address);
+  let cursor = 0;
+  const responders = new Set();
+  const worker = async () => {
+    while (cursor < candidates.length) {
+      const ip = candidates[cursor++];
+      try {
+        await execFileAsync("ping", ["-n", "1", "-w", "350", ip], { windowsHide: true, timeout: 1000, maxBuffer: 2000 });
+        responders.add(ip);
+      } catch {}
+    }
+  };
+  await Promise.all(Array.from({ length: 24 }, worker));
   let arpText = "";
   try {
     const result = await execFileAsync("arp", ["-a"], { windowsHide: true, timeout: 5000, maxBuffer: 30000 });
     arpText = result.stdout || "";
   } catch {}
-  const found = new Map();
-  const rowPattern = /((?:\d{1,3}\.){3}\d{1,3})\s+([0-9a-f-]{11,17})/ig;
-  for (const match of arpText.matchAll(rowPattern)) {
-    const ip = match[1];
-    const mac = match[2].replace(/-/g, ":").toLowerCase();
-    const octets = ip.split(".").map(Number);
-    const privateAddress = octets[0] === 10 || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) || (octets[0] === 192 && octets[1] === 168);
-    if (privateAddress && mac !== "ff:ff:ff:ff:ff:ff" && !mac.startsWith("01:00:5e")) found.set(ip, { ip, mac, kind: "Network device" });
+  const macs = new Map();
+  const rowPattern = /((?:\\d{1,3}\\.){3}\\d{1,3})\\s+([0-9a-f-]{11,17})/ig;
+  for (const match of arpText.matchAll(rowPattern)) macs.set(match[1], match[2].replace(/-/g, ":").toLowerCase());
+  const devices = [{ ip: local.address, name: os.hostname() || "This PC", kind: "Local device", local: true }];
+  for (const ip of candidates) {
+    const mac = macs.get(ip);
+    if (!responders.has(ip) && !mac) continue;
+    devices.push({ ip, mac: mac || null, name: "LAN device", kind: "Detected device", local: false });
   }
-  const devices = [];
-  if (local) devices.push({ ip: local.address, name: "This PC", kind: "Local device", local: true });
-  for (const device of found.values()) if (!local || device.ip !== local.address) devices.push({ ...device, name: "Detected device", local: false });
-  return { devices, interfaceName: local ? local.address : "No active IPv4 interface", updatedAt: new Date().toISOString(), method: "Local ARP neighbour table" };
+  mdtCache = { devices, interfaceName: local.address, networkRange: base + ".0/24", updatedAt: new Date().toISOString(), method: "Private LAN ICMP discovery + ARP neighbour table", scanNote: "Only the local /24 was checked. No ports were scanned and no devices were accessed." };
+  mdtCacheAt = Date.now();
+  return mdtCache;
 });
 
 
@@ -148,7 +169,10 @@ const toolSpecs = [
   { type: "function", function: { name: "open_url", description: "Open a web address in the default browser. Requires approval.", parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"], additionalProperties: false } } },
   { type: "function", function: { name: "list_workspace", description: "List files and folders in the selected workspace or a relative subfolder.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } },
   { type: "function", function: { name: "read_text_file", description: "Read a small text file inside the selected workspace.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false } } },
-  { type: "function", function: { name: "run_safe_command", description: "Run a read-only diagnostic command from the permitted list. Requires approval.", parameters: { type: "object", properties: { command: { type: "string", enum: ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"] } }, required: ["command"], additionalProperties: false } } }
+  { type: "function", function: { name: "run_safe_command", description: "Run a read-only diagnostic command from the permitted list. Requires approval.", parameters: { type: "object", properties: { command: { type: "string", enum: ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"] } }, required: ["command"], additionalProperties: false } } },
+  { type: "function", function: { name: "list_running_apps", description: "List running Windows applications and processes (read-only).", parameters: { type: "object", properties: {}, additionalProperties: false } } },
+  { type: "function", function: { name: "launch_approved_app", description: "Launch an approved built-in Windows app. Requires user approval.", parameters: { type: "object", properties: { app: { type: "string", enum: ["notepad","calculator","file_explorer","task_manager","paint","settings"] } }, required: ["app"], additionalProperties: false } } },
+  { type: "function", function: { name: "open_workspace_folder", description: "Open the selected workspace or a subfolder in File Explorer. Requires user approval.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } }
 ];
 async function executeTool(name, args) {
   if (name === "computer_screenshot") return captureScreen();
@@ -176,6 +200,27 @@ async function executeTool(name, args) {
     if (!stat.isFile() || stat.size > 200000) throw new Error("Only text files up to 200 KB can be read.");
     return (await fs.readFile(target, "utf8")).slice(0, 200000);
   }
+  if (name === "list_running_apps") {
+    const result = await execFileAsync("tasklist.exe", ["/FO", "CSV", "/NH"], { windowsHide: true, timeout: 10000, maxBuffer: 50000 });
+    const rows = result.stdout.split(/\\r?\\n/).filter(Boolean).slice(0, 120);
+    return rows.map(line => { const cols = line.match(/"([^"]*)"/g) || []; return { process: (cols[0] || "").replace(/"/g, ""), pid: (cols[1] || "").replace(/"/g, ""), memory: (cols[4] || "").replace(/"/g, "") }; });
+  }
+  if (name === "launch_approved_app") {
+    const apps = { notepad: "notepad.exe", calculator: "calc.exe", file_explorer: "explorer.exe", task_manager: "taskmgr.exe", paint: "mspaint.exe", settings: "ms-settings:" };
+    const target = apps[args.app];
+    if (!target) throw new Error("This app is not on the approved launch list.");
+    if (!await approveAction("ONE BRAIN wants to open " + args.app.replace(/_/g, " ") + ".")) return { ok: false, denied: true };
+    if (target.endsWith(":")) await shell.openExternal(target);
+    else await execFileAsync(target, [], { windowsHide: false, timeout: 5000 });
+    return { ok: true, launched: args.app };
+  }
+  if (name === "open_workspace_folder") {
+    const target = withinWorkspace(args.path || ".");
+    if (!await approveAction("Open this folder in File Explorer?\\n" + target)) return { ok: false, denied: true };
+    const error = await shell.openPath(target);
+    if (error) throw new Error(error);
+    return { ok: true, path: target };
+  }
   if (name === "run_safe_command") {
     const allowed = ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"];
     if (!allowed.includes(args.command)) throw new Error("Command is not permitted.");
@@ -192,7 +237,7 @@ ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
   running = true; stopRequested = false;
   const chosenModel = model || "openai/gpt-4o";
   const messages = [
-    { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. Work only toward the user's stated task. Inspect before acting. Use tools when needed, verify outcomes, and report clearly. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Ask before every click, keystroke, URL open, or diagnostic command. The selected workspace is the only file area you may inspect. If a tool is denied, do not retry it. Stop when asked." },
+    { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshot, mouse click, keyboard typing/key, approved app launching, running-app listing, workspace file listing/reading/folder opening, approved website opening, and read-only diagnostics tools. Inspect before acting, use the appropriate tool, verify outcomes, and report clearly. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Ask before every click, keystroke, URL open, or diagnostic command. The selected workspace is the only file area you may inspect. If a tool is denied, do not retry it. Stop when asked." },
     { role: "user", content: String(task).slice(0, 6000) }
   ];
   try {
