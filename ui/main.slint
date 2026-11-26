@@ -1,147 +1,257 @@
-import { Button, LineEdit } from "std-widgets.slint";
+import { LineEdit } from "std-widgets.slint";
+
+component BrandMark inherits Rectangle {
+    width: 42px;
+    height: 42px;
+    background: #102a42;
+    border-radius: 13px;
+    border-width: 1px;
+    border-color: #2a7590;
+    Rectangle { x: 9px; y: 9px; width: 24px; height: 24px; border-radius: 12px; border-width: 2px; border-color: #56d9c4; background: transparent; }
+    Rectangle { x: 14px; y: 14px; width: 14px; height: 14px; border-radius: 7px; border-width: 2px; border-color: #83baff; background: transparent; }
+    Rectangle { x: 19px; y: 19px; width: 4px; height: 4px; border-radius: 2px; background: #ffffff; }
+    Rectangle { x: 19px; y: 3px; width: 4px; height: 8px; border-radius: 2px; background: #56d9c4; }
+    Rectangle { x: 19px; y: 31px; width: 4px; height: 8px; border-radius: 2px; background: #56d9c4; }
+    Rectangle { x: 3px; y: 19px; width: 8px; height: 4px; border-radius: 2px; background: #83baff; }
+    Rectangle { x: 31px; y: 19px; width: 8px; height: 4px; border-radius: 2px; background: #83baff; }
+}
+
+component OBButton inherits Rectangle {
+    in property <string> label: "";
+    in property <bool> primary: false;
+    in property <bool> compact: false;
+    callback clicked();
+    height: root.compact ? 34px : 42px;
+    background: root.primary ? #1d9b91 : #17283b;
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: root.primary ? #39c8b5 : #29445f;
+    Text {
+        text: root.label;
+        color: #f2f8ff;
+        font-size: root.compact ? 11px : 13px;
+        font-weight: 650;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    TouchArea { clicked => { root.clicked(); } }
+}
+
+component NavItem inherits Rectangle {
+    in property <string> label: "";
+    in property <bool> selected: false;
+    callback clicked();
+    height: 42px;
+    background: root.selected ? #1a3449 : transparent;
+    border-radius: 9px;
+    Rectangle { x: 0px; y: 8px; width: 3px; height: 26px; border-radius: 2px; background: root.selected ? #59d8c3 : transparent; }
+    Text { x: 14px; vertical-alignment: center; text: root.label; color: root.selected ? #efffff : #91a9c1; font-size: 13px; font-weight: root.selected ? 700 : 500; }
+    TouchArea { clicked => { root.clicked(); } }
+}
 
 export component MainWindow inherits Window {
     title: "ONE BRAIN";
-    width: 1240px;
-    height: 790px;
-    background: #080d17;
+    width: 1380px;
+    height: 860px;
+    min-width: 1050px;
+    min-height: 700px;
+    background: #08111c;
 
-    in-out property <string> transcript: "Welcome to ONE BRAIN.\n\nConnect your OpenRouter key, add one or more model IDs, and send a prompt. Multiple models can answer the same prompt in parallel.";
+    in-out property <string> transcript: "ONE BRAIN is ready.\n\nConnect your OpenRouter API key in Settings, choose model IDs, then start a conversation.";
     in-out property <string> prompt: "";
     in-out property <string> api_key_input: "";
     in-out property <string> model_id: "openai/gpt-4o-mini";
-    in-out property <string> status_text: "SYSTEM READY · MULTI-MODEL API MODE";
+    in-out property <string> status_text: "SYSTEM READY  /  API NOT CONNECTED";
+    in-out property <string> active_page: "workspace";
+    in-out property <bool> notifications_enabled: true;
+    in-out property <bool> api_connected: false;
     callback send_prompt(string, string);
     callback save_key(string);
+    callback test_connection();
     callback check_updates();
     callback computer_control();
+    callback clear_conversation();
+    callback toggle_notifications(bool);
 
     Rectangle {
-        background: #080d17;
+        background: #08111c;
         HorizontalLayout {
             spacing: 0px;
 
             Rectangle {
-                width: 236px;
-                background: #0d1523;
+                width: 244px;
+                background: #0b1725;
                 border-width: 1px;
-                border-color: #1c2a3e;
+                border-color: #1b3044;
                 VerticalLayout {
                     padding: 18px;
-                    spacing: 14px;
-
-                    Text { text: "ONE BRAIN"; color: #edf5ff; font-size: 23px; font-weight: 800; }
-                    Text { text: "PRIVATE AI NETWORK"; color: #6f91b9; font-size: 10px; letter-spacing: 1px; }
-                    Rectangle { height: 1px; background: #24334a; }
-
-                    Button { text: "◈   Workspace"; clicked => { root.status_text = "Multi-model chat workspace active."; } }
-                    Button { text: "◎   AI network"; clicked => { root.status_text = "Enter up to five OpenRouter model IDs, separated by semicolons."; } }
-                    Button { text: "▣   Computer control"; clicked => { root.computer_control(); } }
-                    Button { text: "◉   Notifications"; clicked => { root.status_text = "Windows response and update notifications are enabled where supported."; } }
-                    Button { text: "⚙   Settings"; clicked => { root.status_text = "Configure your OpenRouter key and model IDs in this panel."; } }
-
-                    Rectangle { height: 1px; background: #24334a; }
-                    Text { text: "OPENROUTER CONNECTION"; color: #7f9bbb; font-size: 10px; }
-                    LineEdit {
-                        text <=> root.api_key_input;
-                        placeholder-text: "Paste API key";
-                        input-type: password;
+                    spacing: 13px;
+                    HorizontalLayout {
+                        height: 48px;
+                        BrandMark {}
+                        VerticalLayout {
+                            spacing: 1px;
+                            Text { text: "ONE BRAIN"; color: #f2f8ff; font-size: 18px; font-weight: 850; vertical-alignment: center; }
+                            Text { text: "INTELLIGENCE NETWORK"; color: #6e94b4; font-size: 8px; letter-spacing: 1px; }
+                        }
                     }
-                    Button { text: "Save API key"; clicked => { root.save_key(root.api_key_input); } }
-                    Text {
-                        text: "Session-only storage. Your key is not sent to ONE BRAIN servers.";
-                        color: #8193a9; font-size: 10px; wrap: word-wrap;
+                    Rectangle { height: 1px; background: #20364b; }
+                    Text { text: "WORKSPACE"; color: #6485a5; font-size: 9px; letter-spacing: 1.5px; }
+                    NavItem { label: "◈   Overview"; selected: root.active_page == "workspace"; clicked => { root.active_page = "workspace"; root.status_text = "Workspace ready."; } }
+                    NavItem { label: "◎   AI Network"; selected: root.active_page == "network"; clicked => { root.active_page = "network"; root.status_text = "AI network overview."; } }
+                    NavItem { label: "▤   Conversation"; selected: root.active_page == "conversation"; clicked => { root.active_page = "conversation"; root.status_text = "Conversation history for this session."; } }
+                    NavItem { label: "⚙   Settings"; selected: root.active_page == "settings"; clicked => { root.active_page = "settings"; root.status_text = "Application settings."; } }
+                    Rectangle { height: 1px; background: #20364b; }
+                    Text { text: "TOOLS"; color: #6485a5; font-size: 9px; letter-spacing: 1.5px; }
+                    NavItem { label: "⌘   Computer control"; selected: root.active_page == "computer"; clicked => { root.active_page = "computer"; root.computer_control(); } }
+                    NavItem { label: "◉   Notifications"; selected: root.active_page == "notifications"; clicked => { root.active_page = "notifications"; root.toggle_notifications(!root.notifications_enabled); root.notifications_enabled = !root.notifications_enabled; } }
+                    Rectangle { vertical-stretch: 1; }
+                    Rectangle {
+                        background: #102338;
+                        border-radius: 10px;
+                        border-width: 1px;
+                        border-color: #24425a;
+                        VerticalLayout {
+                            padding: 11px;
+                            spacing: 6px;
+                            Text { text: "CONNECTION"; color: #7195b7; font-size: 9px; letter-spacing: 1px; }
+                            HorizontalLayout {
+                                Text { text: "●"; color: root.api_connected ? #5de0b5 : #e8b66a; font-size: 12px; }
+                                Text { text: root.api_connected ? "OpenRouter online" : "Not connected"; color: #d5e5f5; font-size: 11px; }
+                            }
+                            OBButton { label: "Open settings"; compact: true; clicked => { root.active_page = "settings"; } }
+                        }
                     }
-                    Rectangle { height: 1px; background: #24334a; }
-                    Text { text: "MODEL IDs · MAX 5"; color: #7f9bbb; font-size: 10px; }
-                    LineEdit {
-                        text <=> root.model_id;
-                        placeholder-text: "provider/model; provider/model";
-                    }
-                    Text {
-                        text: "Separate IDs with semicolons. Example: openai/gpt-4o-mini; anthropic/claude-3.5-sonnet";
-                        color: #8193a9; font-size: 10px; wrap: word-wrap;
-                    }
-                    Rectangle { height: 1px; background: #24334a; }
-                    Button { text: "Check for updates"; clicked => { root.check_updates(); } }
-                    Text { text: "v0.1.0 · RUST CORE"; color: #60758f; font-size: 10px; }
-                    Rectangle { height: 1px; background: #24334a; }
-                    Text { text: "Independent project. Provider access and model availability depend on OpenRouter."; color: #71859e; font-size: 10px; wrap: word-wrap; }
+                    Text { text: "BUILD 0.2.0  ·  RUST / SLINT"; color: #58718a; font-size: 8px; }
                 }
             }
 
             Rectangle {
-                background: #101827;
+                background: #0e1b2a;
                 VerticalLayout {
-                    padding: 22px;
-                    spacing: 14px;
-
+                    padding: 24px;
+                    spacing: 16px;
                     HorizontalLayout {
                         height: 52px;
-                        Text { text: "Intelligence workspace"; color: #f0f6ff; font-size: 22px; font-weight: 700; vertical-alignment: center; }
-                        Rectangle { horizontal-stretch: 1; }
-                        Text { text: "● PRIVATE SESSION"; color: #65d6b0; font-size: 10px; vertical-alignment: center; }
-                    }
-
-                    Rectangle {
-                        background: #141f30; border-radius: 12px; border-width: 1px; border-color: #263852;
                         VerticalLayout {
-                            padding: 18px; spacing: 8px;
-                            HorizontalLayout {
-                                Text { text: "CONVERSATION"; color: #7f9bbb; font-size: 10px; letter-spacing: 1px; }
-                                Rectangle { horizontal-stretch: 1; }
-                                Text { text: "PARALLEL MODEL MODE"; color: #72c9b4; font-size: 9px; }
-                            }
+                            spacing: 2px;
                             Text {
-                                text: root.transcript; color: #e4edf8; font-size: 14px; wrap: word-wrap; vertical-stretch: 1;
+                                text: root.active_page == "workspace" ? "Intelligence workspace" : root.active_page == "network" ? "AI network" : root.active_page == "conversation" ? "Conversation" : root.active_page == "settings" ? "Settings & connections" : root.active_page == "computer" ? "Computer control" : "Notifications";
+                                color: #f0f6ff; font-size: 24px; font-weight: 750;
+                            }
+                            Text { text: "A unified space for connected intelligence"; color: #829bb5; font-size: 11px; }
+                        }
+                        Rectangle { horizontal-stretch: 1; }
+                        Rectangle {
+                            background: #142b36; border-radius: 20px; border-width: 1px; border-color: #245347; width: 126px; height: 30px;
+                            Text { text: "●  PRIVATE SESSION"; color: #6fe0be; font-size: 9px; horizontal-alignment: center; vertical-alignment: center; }
+                        }
+                    }
+
+                    if root.active_page == "workspace" : Rectangle {
+                        background: transparent;
+                        VerticalLayout {
+                            spacing: 12px;
+                            Rectangle {
+                                background: #142437; border-radius: 14px; border-width: 1px; border-color: #263f58;
+                                VerticalLayout {
+                                    padding: 16px; spacing: 10px;
+                                    HorizontalLayout {
+                                        Text { text: "LIVE SESSION"; color: #8daac6; font-size: 10px; letter-spacing: 1px; }
+                                        Rectangle { horizontal-stretch: 1; }
+                                        Text { text: "MULTI-MODEL MODE"; color: #62d4bf; font-size: 9px; }
+                                    }
+                                    Text { text: root.transcript; color: #e0ebf7; font-size: 13px; wrap: word-wrap; vertical-stretch: 1; }
+                                }
+                            }
+                            Rectangle {
+                                background: #142437; border-radius: 14px; border-width: 1px; border-color: #2b4963; height: 108px;
+                                VerticalLayout {
+                                    padding: 12px; spacing: 7px;
+                                    Text { text: "YOUR PROMPT"; color: #8daac6; font-size: 9px; letter-spacing: 1px; }
+                                    HorizontalLayout {
+                                        LineEdit { text <=> root.prompt; placeholder-text: "Ask your AI network anything…"; horizontal-stretch: 1; }
+                                        OBButton { label: "Send prompt  ➜"; primary: true; width: 142px; clicked => { root.send_prompt(root.prompt, root.model_id); } }
+                                    }
+                                }
+                            }
+                            HorizontalLayout {
+                                OBButton { label: "＋  New conversation"; width: 160px; compact: true; clicked => { root.clear_conversation(); } }
+                                OBButton { label: "Check updates"; width: 126px; compact: true; clicked => { root.check_updates(); } }
+                                Rectangle { horizontal-stretch: 1; }
+                                Text { text: root.status_text; color: #8ba7c2; font-size: 10px; vertical-alignment: center; }
                             }
                         }
-                    }
-
-                    Rectangle {
-                        background: #141f30; border-radius: 12px; border-width: 1px; border-color: #263852; height: 92px;
-                        HorizontalLayout {
-                            padding: 12px; spacing: 10px;
-                            LineEdit { text <=> root.prompt; placeholder-text: "Ask all selected models…"; horizontal-stretch: 1; }
-                            Button { text: "Run models  ➤"; clicked => { root.send_prompt(root.prompt, root.model_id); } }
+                    } else if root.active_page == "settings" : Rectangle {
+                        background: #142437; border-radius: 14px; border-width: 1px; border-color: #263f58;
+                        VerticalLayout {
+                            padding: 22px; spacing: 12px;
+                            Text { text: "OPENROUTER API"; color: #f0f6ff; font-size: 17px; font-weight: 700; }
+                            Text { text: "Connect models through your OpenRouter account. API usage may incur costs; set a spending limit on your provider account."; color: #9bb0c6; font-size: 12px; wrap: word-wrap; }
+                            Text { text: "API KEY"; color: #83a3c2; font-size: 10px; }
+                            LineEdit { text <=> root.api_key_input; placeholder-text: "Paste your OpenRouter key (kept in memory only)"; input-type: password; }
+                            HorizontalLayout {
+                                OBButton { label: "Save key"; width: 130px; primary: true; clicked => { root.save_key(root.api_key_input); } }
+                                OBButton { label: "Test connection"; width: 150px; clicked => { root.test_connection(); } }
+                            }
+                            Rectangle { height: 1px; background: #29445d; }
+                            Text { text: "MODEL IDS"; color: #83a3c2; font-size: 10px; }
+                            LineEdit { text <=> root.model_id; placeholder-text: "provider/model; provider/model"; }
+                            Text { text: "Add up to five model IDs separated by semicolons. Availability depends on the models currently supported by OpenRouter."; color: #9bb0c6; font-size: 11px; wrap: word-wrap; }
+                            Rectangle { height: 1px; background: #29445d; }
+                            HorizontalLayout {
+                                Text { text: "Connection status"; color: #a9bfd5; font-size: 12px; }
+                                Rectangle { horizontal-stretch: 1; }
+                                Text { text: root.api_connected ? "CONNECTED" : "NOT TESTED"; color: root.api_connected ? #62d4bf : #e8b66a; font-size: 10px; }
+                            }
+                            Rectangle { vertical-stretch: 1; }
+                            Text { text: root.status_text; color: #87a3bf; font-size: 11px; }
+                        }
+                    } else if root.active_page == "network" : Rectangle {
+                        background: #142437; border-radius: 14px; border-width: 1px; border-color: #263f58;
+                        VerticalLayout {
+                            padding: 22px; spacing: 12px;
+                            Text { text: "MODEL ROUTING"; color: #f0f6ff; font-size: 17px; font-weight: 700; }
+                            Text { text: "ONE BRAIN sends requests to the model IDs you configure. It does not pretend every consumer AI brand has a public API."; color: #9bb0c6; font-size: 12px; wrap: word-wrap; }
+                            Text { text: root.model_id; color: #6fe0c4; font-size: 13px; wrap: word-wrap; }
+                            OBButton { label: "Configure model IDs"; width: 190px; clicked => { root.active_page = "settings"; } }
+                            Rectangle { vertical-stretch: 1; }
+                            Text { text: "Up to five models can be queried in parallel per prompt."; color: #8ba7c2; font-size: 11px; }
+                        }
+                    } else if root.active_page == "conversation" : Rectangle {
+                        background: #142437; border-radius: 14px; border-width: 1px; border-color: #263f58;
+                        VerticalLayout {
+                            padding: 22px; spacing: 12px;
+                            Text { text: "CURRENT SESSION"; color: #f0f6ff; font-size: 17px; font-weight: 700; }
+                            Text { text: root.transcript; color: #dbe8f5; font-size: 12px; wrap: word-wrap; vertical-stretch: 1; }
+                            OBButton { label: "Clear conversation"; width: 170px; clicked => { root.clear_conversation(); } }
+                        }
+                    } else if root.active_page == "computer" : Rectangle {
+                        background: #142437; border-radius: 14px; border-width: 1px; border-color: #263f58;
+                        VerticalLayout {
+                            padding: 22px; spacing: 12px;
+                            Text { text: "CONTROL IS CURRENTLY LOCKED"; color: #f0f6ff; font-size: 17px; font-weight: 700; }
+                            Text { text: "This preview does not execute computer actions. A future version will use explicit permission prompts, visible action logs, and confirmation before sensitive operations."; color: #9bb0c6; font-size: 12px; wrap: word-wrap; }
+                            OBButton { label: "Back to workspace"; width: 170px; clicked => { root.active_page = "workspace"; } }
+                        }
+                    } else : Rectangle {
+                        background: #142437; border-radius: 14px; border-width: 1px; border-color: #263f58;
+                        VerticalLayout {
+                            padding: 22px; spacing: 12px;
+                            Text { text: "DESKTOP NOTIFICATIONS"; color: #f0f6ff; font-size: 17px; font-weight: 700; }
+                            Text { text: root.notifications_enabled ? "Notifications are enabled for completed model responses and available updates." : "Notifications are paused. You will still see results inside the app."; color: #9bb0c6; font-size: 12px; wrap: word-wrap; }
+                            OBButton { label: root.notifications_enabled ? "Turn notifications off" : "Turn notifications on"; width: 210px; primary: true; clicked => { root.notifications_enabled = !root.notifications_enabled; root.toggle_notifications(root.notifications_enabled); } }
                         }
                     }
-
                     Rectangle {
-                        background: #0d1523; border-radius: 8px;
-                        VerticalLayout { padding: 10px; Text { text: root.status_text; color: #8ca7c7; font-size: 11px; } }
+                        height: 38px; background: #0a1623; border-radius: 9px; border-width: 1px; border-color: #20364b;
+                        HorizontalLayout {
+                            padding-left: 12px; padding-right: 12px;
+                            Text { text: "SYSTEM"; color: #6485a5; font-size: 9px; vertical-alignment: center; }
+                            Rectangle { horizontal-stretch: 1; }
+                            Text { text: root.status_text; color: #a2b8ce; font-size: 10px; vertical-alignment: center; }
+                        }
                     }
-                }
-            }
-
-            Rectangle {
-                width: 224px; background: #0d1523; border-width: 1px; border-color: #1c2a3e;
-                VerticalLayout {
-                    padding: 16px; spacing: 12px;
-                    Text { text: "AI NETWORK"; color: #e8f1ff; font-size: 13px; font-weight: 700; }
-                    Text { text: "Provider access via OpenRouter"; color: #718aa8; font-size: 10px; }
-                    Rectangle { height: 1px; background: #24334a; }
-                    for provider in ["ChatGPT", "Claude", "Grok", "DeepSeek", "Perplexity", "Meta AI", "NVIDIA AI", "Gemini", "Copilot", "Mistral"] : HorizontalLayout {
-                        height: 28px;
-                        Text { text: "●"; color: #4a6a8c; }
-                        Text { text: provider; color: #c4d4e8; font-size: 12px; }
-                        Rectangle { horizontal-stretch: 1; }
-                        Text { text: "PLAN"; color: #637b97; font-size: 9px; }
-                    }
-                    Rectangle { height: 1px; background: #24334a; }
-                    Text { text: "LIVE COLLABORATION"; color: #7f9bbb; font-size: 10px; }
-                    Text {
-                        text: "Send one prompt to up to five selected models at once. Compare their independent responses in the same conversation.";
-                        color: #a0b3ca; font-size: 11px; wrap: word-wrap;
-                    }
-                    Rectangle { height: 1px; background: #24334a; }
-                    Text { text: "COMPUTER CONTROL"; color: #7f9bbb; font-size: 10px; }
-                    Text {
-                        text: "Not enabled yet. Future controls will require explicit permission and confirmation.";
-                        color: #a0b3ca; font-size: 11px; wrap: word-wrap;
-                    }
-                    Rectangle { vertical-stretch: 1; }
-                    Text { text: "SLINT UI · RUST CORE"; color: #60758f; font-size: 9px; }
                 }
             }
         }
