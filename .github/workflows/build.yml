@@ -1,0 +1,99 @@
+name: ONE BRAIN development builds
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-desktop:
+    runs-on: windows-latest
+    env:
+      VITE_BUILD_NUMBER: ${{ github.run_number }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Build React interface
+        run: npm run build
+      - name: Package Windows installer
+        run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: one-brain-windows-installer
+          path: desktop/dist-installer/*.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  android-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - name: Install dependencies
+        run: npm install
+      - name: Build React interface
+        env:
+          VITE_BUILD_NUMBER: ${{ github.run_number }}
+        run: npm run build
+      - name: Generate Android project
+        run: npx cap add android
+      - name: Sync web app into Android
+        run: npx cap sync android
+      - name: Build debug APK
+        working-directory: desktop/android
+        run: ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: one-brain-android-apk
+          path: desktop/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    needs: [windows-desktop, android-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: one-brain-windows-installer
+          path: release-assets
+      - uses: actions/download-artifact@v4
+        with:
+          name: one-brain-android-apk
+          path: release-assets
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('dev-build-{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('ONE BRAIN DEV BUILD #{0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          files: release-assets/*
+          generate_release_notes: true

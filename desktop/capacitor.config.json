@@ -1,0 +1,8 @@
+{
+  "appId": "com.tuckerlowson.onebrain",
+  "appName": "ONE BRAIN",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
