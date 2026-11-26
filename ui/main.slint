@@ -51,8 +51,10 @@ component NavItem inherits Rectangle {
 
 export component MainWindow inherits Window {
     title: "ONE BRAIN";
-    width: 1380px;
-    height: 860px;
+    width: 1360px;
+    height: 820px;
+    min-width: 1040px;
+    min-height: 640px;
     background: #08111c;
 
     in-out property <string> transcript: "ONE BRAIN is ready.\n\nConnect your OpenRouter API key in Settings, choose model IDs, then start a conversation.";
@@ -94,7 +96,7 @@ export component MainWindow inherits Window {
             spacing: 0px;
 
             Rectangle {
-                width: 244px;
+                width: 232px;
                 background: #0b1725;
                 border-width: 1px;
                 border-color: #1b3044;
@@ -144,15 +146,15 @@ export component MainWindow inherits Window {
             Rectangle {
                 background: #0e1b2a;
                 VerticalLayout {
-                    padding: 24px;
-                    spacing: 16px;
+                    padding: 22px;
+                    spacing: 15px;
                     HorizontalLayout {
                         height: 52px;
                         VerticalLayout {
                             spacing: 2px;
                             Text {
                                 text: root.active_page == "workspace" ? "Intelligence workspace" : root.active_page == "network" ? "AI network" : root.active_page == "conversation" ? "Conversation" : root.active_page == "settings" ? "Settings & connections" : root.active_page == "computer" ? "Computer control" : "Notifications";
-                                color: #f0f6ff; font-size: 24px; font-weight: 750;
+                                color: #f0f6ff; font-size: 25px; font-weight: 800;
                             }
                             Text { text: "A unified space for connected intelligence"; color: #829bb5; font-size: 11px; }
                         }
@@ -170,7 +172,7 @@ export component MainWindow inherits Window {
                         VerticalLayout {
                             spacing: 12px;
                             Rectangle {
-                                background: #142437; border-radius: 14px; border-width: 1px; border-color: #263f58;
+                                background: #142437; border-radius: 16px; border-width: 1px; border-color: #2a455f;
                                 VerticalLayout {
                                     padding: 16px; spacing: 10px;
                                     HorizontalLayout {
