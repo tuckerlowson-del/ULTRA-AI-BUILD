@@ -49,11 +49,11 @@ async function captureScreen() {
   return { ok: true, width: sources[0].thumbnail.getSize().width, height: sources[0].thumbnail.getSize().height, image };
 }
 async function computerAction(kind, args) {
-  const { mouse, keyboard, Button, Key, Point } = require("@nut-tree/nut-js");
+  const { mouse, keyboard, Button, Key, Point, straightTo } = require("@nut-tree-fork/nut-js");
   if (kind === "click") {
     const x = Math.max(0, Math.min(10000, Number(args.x)));
     const y = Math.max(0, Math.min(10000, Number(args.y)));
-    await mouse.setPosition(new Point(x, y)); await mouse.click(Button.LEFT);
+    await mouse.move(straightTo(new Point(x, y))); await mouse.click(Button.LEFT);
     return { ok: true, action: "left_click", x, y };
   }
   if (kind === "type") {
@@ -62,10 +62,10 @@ async function computerAction(kind, args) {
     return { ok: true, characters: value.length };
   }
   if (kind === "key") {
-    const allowed = { ENTER: Key.ENTER, TAB: Key.TAB, ESC: Key.ESC, SPACE: Key.SPACE, BACKSPACE: Key.BACKSPACE, UP: Key.UP, DOWN: Key.DOWN, LEFT: Key.LEFT, RIGHT: Key.RIGHT };
+    const allowed = { ENTER: Key.Enter, TAB: Key.Tab, ESC: Key.Escape, SPACE: Key.Space, BACKSPACE: Key.Backspace, UP: Key.Up, DOWN: Key.Down, LEFT: Key.Left, RIGHT: Key.Right };
     const key = allowed[String(args.key || "").toUpperCase()];
     if (!key) throw new Error("That key is not in the permitted key list.");
-    await keyboard.pressKey(key);
+    await keyboard.type(key);
     return { ok: true, key: String(args.key).toUpperCase() };
   }
 }
