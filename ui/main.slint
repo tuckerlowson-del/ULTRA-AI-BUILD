@@ -1,0 +1,149 @@
+import { Button, LineEdit } from "std-widgets.slint";
+
+export component MainWindow inherits Window {
+    title: "ONE BRAIN";
+    width: 1240px;
+    height: 790px;
+    background: #080d17;
+
+    in-out property <string> transcript: "Welcome to ONE BRAIN.\n\nConnect your OpenRouter key, add one or more model IDs, and send a prompt. Multiple models can answer the same prompt in parallel.";
+    in-out property <string> prompt: "";
+    in-out property <string> api_key_input: "";
+    in-out property <string> model_id: "openai/gpt-4o-mini";
+    in-out property <string> status_text: "SYSTEM READY · MULTI-MODEL API MODE";
+    callback send_prompt(string, string);
+    callback save_key(string);
+    callback check_updates();
+    callback computer_control();
+
+    Rectangle {
+        background: #080d17;
+        HorizontalLayout {
+            spacing: 0px;
+
+            Rectangle {
+                width: 236px;
+                background: #0d1523;
+                border-width: 1px;
+                border-color: #1c2a3e;
+                VerticalLayout {
+                    padding: 18px;
+                    spacing: 14px;
+
+                    Text { text: "ONE BRAIN"; color: #edf5ff; font-size: 23px; font-weight: 800; }
+                    Text { text: "PRIVATE AI NETWORK"; color: #6f91b9; font-size: 10px; letter-spacing: 1px; }
+                    Rectangle { height: 1px; background: #24334a; }
+
+                    Button { text: "◈   Workspace"; clicked => root.status_text = "Multi-model chat workspace active."; }
+                    Button { text: "◎   AI network"; clicked => root.status_text = "Enter up to five OpenRouter model IDs, separated by semicolons."; }
+                    Button { text: "▣   Computer control"; clicked => root.computer_control(); }
+                    Button { text: "◉   Notifications"; clicked => root.status_text = "Windows response and update notifications are enabled where supported."; }
+                    Button { text: "⚙   Settings"; clicked => root.status_text = "Configure your OpenRouter key and model IDs in this panel."; }
+
+                    Rectangle { height: 1px; background: #24334a; }
+                    Text { text: "OPENROUTER CONNECTION"; color: #7f9bbb; font-size: 10px; }
+                    LineEdit {
+                        text <=> root.api_key_input;
+                        placeholder-text: "Paste API key";
+                        input-type: password;
+                    }
+                    Button { text: "Save API key"; clicked => root.save_key(root.api_key_input); }
+                    Text {
+                        text: "Session-only storage. Your key is not sent to ONE BRAIN servers.";
+                        color: #8193a9; font-size: 10px; wrap: word-wrap;
+                    }
+                    Rectangle { height: 1px; background: #24334a; }
+                    Text { text: "MODEL IDs · MAX 5"; color: #7f9bbb; font-size: 10px; }
+                    LineEdit {
+                        text <=> root.model_id;
+                        placeholder-text: "provider/model; provider/model";
+                    }
+                    Text {
+                        text: "Separate IDs with semicolons. Example: openai/gpt-4o-mini; anthropic/claude-3.5-sonnet";
+                        color: #8193a9; font-size: 10px; wrap: word-wrap;
+                    }
+                    Rectangle { height: 1px; background: #24334a; }
+                    Button { text: "Check for updates"; clicked => root.check_updates(); }
+                    Text { text: "v0.1.0 · RUST CORE"; color: #60758f; font-size: 10px; }
+                    Rectangle { height: 1px; background: #24334a; }
+                    Text { text: "Independent project. Provider access and model availability depend on OpenRouter."; color: #71859e; font-size: 10px; wrap: word-wrap; }
+                }
+            }
+
+            Rectangle {
+                background: #101827;
+                VerticalLayout {
+                    padding: 22px;
+                    spacing: 14px;
+
+                    HorizontalLayout {
+                        height: 52px;
+                        Text { text: "Intelligence workspace"; color: #f0f6ff; font-size: 22px; font-weight: 700; vertical-alignment: center; }
+                        Rectangle { horizontal-stretch: 1; }
+                        Text { text: "● PRIVATE SESSION"; color: #65d6b0; font-size: 10px; vertical-alignment: center; }
+                    }
+
+                    Rectangle {
+                        background: #141f30; border-radius: 12px; border-width: 1px; border-color: #263852;
+                        VerticalLayout {
+                            padding: 18px; spacing: 8px;
+                            HorizontalLayout {
+                                Text { text: "CONVERSATION"; color: #7f9bbb; font-size: 10px; letter-spacing: 1px; }
+                                Rectangle { horizontal-stretch: 1; }
+                                Text { text: "PARALLEL MODEL MODE"; color: #72c9b4; font-size: 9px; }
+                            }
+                            Text {
+                                text: root.transcript; color: #e4edf8; font-size: 14px; wrap: word-wrap; vertical-stretch: 1;
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        background: #141f30; border-radius: 12px; border-width: 1px; border-color: #263852; height: 92px;
+                        HorizontalLayout {
+                            padding: 12px; spacing: 10px;
+                            LineEdit { text <=> root.prompt; placeholder-text: "Ask all selected models…"; horizontal-stretch: 1; }
+                            Button { text: "Run models  ➤"; clicked => root.send_prompt(root.prompt, root.model_id); }
+                        }
+                    }
+
+                    Rectangle {
+                        background: #0d1523; border-radius: 8px;
+                        VerticalLayout { padding: 10px; Text { text: root.status_text; color: #8ca7c7; font-size: 11px; } }
+                    }
+                }
+            }
+
+            Rectangle {
+                width: 224px; background: #0d1523; border-width: 1px; border-color: #1c2a3e;
+                VerticalLayout {
+                    padding: 16px; spacing: 12px;
+                    Text { text: "AI NETWORK"; color: #e8f1ff; font-size: 13px; font-weight: 700; }
+                    Text { text: "Provider access via OpenRouter"; color: #718aa8; font-size: 10px; }
+                    Rectangle { height: 1px; background: #24334a; }
+                    for provider in ["ChatGPT", "Claude", "Grok", "DeepSeek", "Perplexity", "Meta AI", "NVIDIA AI", "Gemini", "Copilot", "Mistral"] : HorizontalLayout {
+                        height: 28px;
+                        Text { text: "●"; color: #4a6a8c; }
+                        Text { text: provider; color: #c4d4e8; font-size: 12px; }
+                        Rectangle { horizontal-stretch: 1; }
+                        Text { text: "PLAN"; color: #637b97; font-size: 9px; }
+                    }
+                    Rectangle { height: 1px; background: #24334a; }
+                    Text { text: "LIVE COLLABORATION"; color: #7f9bbb; font-size: 10px; }
+                    Text {
+                        text: "Send one prompt to up to five selected models at once. Compare their independent responses in the same conversation.";
+                        color: #a0b3ca; font-size: 11px; wrap: word-wrap;
+                    }
+                    Rectangle { height: 1px; background: #24334a; }
+                    Text { text: "COMPUTER CONTROL"; color: #7f9bbb; font-size: 10px; }
+                    Text {
+                        text: "Not enabled yet. Future controls will require explicit permission and confirmation.";
+                        color: #a0b3ca; font-size: 11px; wrap: word-wrap;
+                    }
+                    Rectangle { vertical-stretch: 1; }
+                    Text { text: "SLINT UI · RUST CORE"; color: #60758f; font-size: 9px; }
+                }
+            }
+        }
+    }
+}
