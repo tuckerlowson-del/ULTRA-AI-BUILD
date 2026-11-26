@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d17">
+  <meta name="description" content="ONE BRAIN — one private AI workspace powered by multiple model providers.">
+  <title>ONE BRAIN — Private AI Network</title>
+  <style>
+    :root{color-scheme:dark;--bg:#080d17;--panel:#101b2b;--line:#233650;--text:#edf5ff;--muted:#91a7c2;--blue:#62b7ff;--cyan:#6ce4d0}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -20%,#18385a 0,transparent 52%),var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,sans-serif}
+    main{width:min(980px,calc(100% - 32px));margin:0 auto;padding:44px 0 64px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:54px}
+    .brand{font-weight:850;letter-spacing:.13em}.tag{color:var(--cyan);font-size:11px;letter-spacing:.16em}
+    .hero{text-align:center;padding:30px 0 38px}.orb{width:142px;height:142px;margin:0 auto 22px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%,#315b82,#10223a 58%,#09111e);border:1px solid #47729b;box-shadow:0 0 70px #2c83c955,inset 0 0 35px #5cbaff22;font-size:64px}
+    h1{font-size:clamp(38px,8vw,68px);line-height:1.05;margin:0;letter-spacing:-.055em}.sub{color:var(--muted);max-width:650px;margin:18px auto 0}
+    .panel{background:linear-gradient(145deg,#14243a,#0d1726);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 24px 70px #0005}
+    .downloads{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:28px}
+    .download{display:block;text-decoration:none;color:var(--text);background:#172941;border:1px solid #34516f;border-radius:15px;padding:18px;text-align:left;transition:.2s}
+    .download:hover{transform:translateY(-2px);border-color:var(--blue);background:#1b3554}.download strong{display:block;font-size:17px}.download small{display:block;color:var(--muted);margin-top:4px}
+    .section{margin-top:34px}.section h2{font-size:18px;margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+    .tile{border:1px solid var(--line);border-radius:14px;padding:15px;background:#0d1725}.tile b{display:block}.tile span{font-size:13px;color:var(--muted)}
+    .signin{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:24px;padding-top:20px;border-top:1px solid var(--line)}
+    .signin p{margin:0;color:var(--muted);font-size:13px}.pill{border:1px solid #34516f;border-radius:99px;padding:8px 13px;color:#b8d8f6;font-size:12px}
+    footer{color:#70849d;font-size:12px;text-align:center;margin-top:34px}
+    @media(max-width:650px){header{margin-bottom:28px}.downloads,.grid{grid-template-columns:1fr}.panel{padding:17px}.signin{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="brand">◈ ONE BRAIN</div>
+    <div class="tag">PRIVATE AI NETWORK</div>
+  </header>
+  <section class="hero">
+    <div class="orb" aria-hidden="true">🧠</div>
+    <h1>Many intelligences.<br>One workspace.</h1>
+    <p class="sub">A private AI workspace designed to bring multiple model providers together, with shared tools, memory and a path toward an independently hosted model.</p>
+  </section>
+  <section class="panel">
+    <div class="tag">GET ONE BRAIN</div>
+    <h2 style="font-size:25px;margin:7px 0 0">Choose your device</h2>
+    <p style="color:var(--muted);margin:7px 0 0">Downloads are served directly from this website. No extra download tab is opened.</p>
+    <div class="downloads">
+      <a class="download" href="/download/windows">
+        <strong>↓ Windows desktop EXE</strong>
+        <small>64-bit · Rust native application</small>
+      </a>
+      <a class="download" href="/download/android">
+        <strong>↓ Android APK</strong>
+        <small>ARM64 · Android application</small>
+      </a>
+    </div>
+    <div class="signin">
+      <div><b>Private account</b><p>Sign-in will be enabled after the authentication provider is confirmed.</p></div>
+      <span class="pill">ACCOUNT SETUP PENDING</span>
+    </div>
+  </section>
+  <section class="section">
+    <h2>Built for your workflow</h2>
+    <div class="grid">
+      <div class="tile"><b>Lightweight Rust app</b><span>Native UI, no Electron runtime.</span></div>
+      <div class="tile"><b>Multi-model access</b><span>OpenRouter-powered model selection.</span></div>
+      <div class="tile"><b>Updates from GitHub</b><span>Release-aware update checks.</span></div>
+    </div>
+  </section>
+  <footer>ONE BRAIN is an independent project. Model access is subject to each provider's availability and terms. UI toolkit: Slint.</footer>
+</main>
+</body>
+</html>
