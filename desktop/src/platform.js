@@ -29,6 +29,14 @@ if (!window.onebrain) {
   }
   window.onebrain = {
     isMobile: true,
+    async getApiKey() {
+      if (!ApkInstaller) return { key: "", persisted: false, available: false };
+      return await ApkInstaller.getApiKey();
+    },
+    async saveApiKey(key) {
+      if (!ApkInstaller) throw new Error("Secure API key storage is only available in the installed Android app.");
+      return await ApkInstaller.saveApiKey({ key: String(key || "").trim() });
+    },
     getUpdateStatus: async () => updateState,
     onUpdateStatus(callback) {
       const handler = event => { if(event.type==="update") callback(event.update); };
