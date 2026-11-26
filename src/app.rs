@@ -41,6 +41,7 @@ pub fn run() {
     let ui = MainWindow::new().expect("could not create ONE BRAIN window");
     let api_key: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     let notifications = Arc::new(AtomicBool::new(true));
+    let computer_permission = Arc::new(AtomicBool::new(false));
     let update_download_url = Arc::new(Mutex::new(None::<String>));
 
     let key_store = Arc::clone(&api_key);
@@ -377,11 +378,103 @@ pub fn run() {
     });
 
     let weak_for_control = ui.as_weak();
+    let permission = Arc::clone(&computer_permission);
     ui.on_computer_control(move || {
+        let enabled = !permission.load(Ordering::Relaxed);
+        permission.store(enabled, Ordering::Relaxed);
         if let Some(window) = weak_for_control.upgrade() {
-            window.set_status_text(
-                "Computer control is disabled in this build. No background actions are running.".into(),
-            );
+            window.set_control_enabled(enabled);
+            window.set_control_log(if enabled {
+                "CONTROL ENABLED. Manual button actions only.".into()
+            } else {
+                "EMERGENCY STOP: computer input disabled.".into()
+            });
+            window.set_status_text(if enabled { "Computer control armed.".into() } else { "Computer control stopped.".into() });
+        }
+    });
+
+    let permission = Arc::clone(&computer_permission);
+    let weak = ui.as_weak();
+    ui.on_control_move(move |x, y| {
+        if !permission.load(Ordering::Relaxed) {
+            if let Some(w) = weak.upgrade() { w.set_control_log("Blocked: enable control first.".into()); }
+            return;
+        }
+        #[cfg(windows)]
+        let result: Result<(), String> = (|| {
+            use enigo::{Coordinate, Enigo, Mouse, Settings};
+            let mut e = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
+            e.move_mouse(x, y, Coordinate::Abs).map_err(|e| e.to_string())
+        })();
+        #[cfg(not(windows))]
+        let result: Result<(), String> = Err("Windows desktop control only.".into());
+        if let Some(w) = weak.upgrade() {
+            w.set_control_log(match result { Ok(()) => format!("Cursor moved to ({}, {}).", x, y), Err(e) => format!("Move failed: {}", e) }.into());
+        }
+    });
+
+    let permission = Arc::clone(&computer_permission);
+    let weak = ui.as_weak();
+    ui.on_control_click(move || {
+        if !permission.load(Ordering::Relaxed) {
+            if let Some(w) = weak.upgrade() { w.set_control_log("Blocked: enable control first.".into()); }
+            return;
+        }
+        #[cfg(windows)]
+        let result: Result<(), String> = (|| {
+            use enigo::{Button, Direction, Enigo, Mouse, Settings};
+            let mut e = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
+            e.button(Button::Left, Direction::Click).map_err(|e| e.to_string())
+        })();
+        #[cfg(not(windows))]
+        let result: Result<(), String> = Err("Windows desktop control only.".into());
+        if let Some(w) = weak.upgrade() {
+            w.set_control_log(match result { Ok(()) => "Left click sent.".to_string(), Err(e) => format!("Click failed: {}", e) }.into());
+        }
+    });
+
+    let permission = Arc::clone(&computer_permission);
+    let weak = ui.as_weak();
+    ui.on_control_type(move |value| {
+        if !permission.load(Ordering::Relaxed) {
+            if let Some(w) = weak.upgrade() { w.set_control_log("Blocked: enable control first.".into()); }
+            return;
+        }
+        let value = value.to_string();
+        if value.len() > 2000 {
+            if let Some(w) = weak.upgrade() { w.set_control_log("Text input limit: 2,000 bytes.".into()); }
+            return;
+        }
+        #[cfg(windows)]
+        let result: Result<(), String> = (|| {
+            use enigo::{Enigo, Keyboard, Settings};
+            let mut e = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
+            e.text(&value).map_err(|e| e.to_string())
+        })();
+        #[cfg(not(windows))]
+        let result: Result<(), String> = Err("Windows desktop control only.".into());
+        if let Some(w) = weak.upgrade() {
+            w.set_control_log(match result { Ok(()) => format!("Typed {} characters.", value.chars().count()), Err(e) => format!("Typing failed: {}", e) }.into());
+        }
+    });
+
+    let permission = Arc::clone(&computer_permission);
+    let weak = ui.as_weak();
+    ui.on_control_enter(move || {
+        if !permission.load(Ordering::Relaxed) {
+            if let Some(w) = weak.upgrade() { w.set_control_log("Blocked: enable control first.".into()); }
+            return;
+        }
+        #[cfg(windows)]
+        let result: Result<(), String> = (|| {
+            use enigo::{Direction, Enigo, Key, Keyboard, Settings};
+            let mut e = Enigo::new(&Settings::default()).map_err(|e| e.to_string())?;
+            e.key(Key::Return, Direction::Click).map_err(|e| e.to_string())
+        })();
+        #[cfg(not(windows))]
+        let result: Result<(), String> = Err("Windows desktop control only.".into());
+        if let Some(w) = weak.upgrade() {
+            w.set_control_log(match result { Ok(()) => "Enter key sent.".to_string(), Err(e) => format!("Enter failed: {}", e) }.into());
         }
     });
 
