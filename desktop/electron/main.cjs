@@ -127,6 +127,20 @@ ipcMain.handle("mdt:network", async () => {
   const macs = new Map();
   const rowPattern = /((?:\d{1,3}\.){3}\d{1,3})\s+([0-9a-f-]{11,17})/ig;
   for (const match of arpText.matchAll(rowPattern)) macs.set(match[1], match[2].replace(/-/g, ":").toLowerCase());
+  // Include Windows' neighbour cache as well as ARP so recently seen LAN clients
+  // are not lost just because they did not answer this scan's ICMP request.
+  try {
+    const neighbourResult = await execFileAsync("powershell.exe", [
+      "-NoProfile", "-NonInteractive", "-Command",
+      "Get-NetNeighbor -AddressFamily IPv4 | Where-Object { $_.State -notin @('Unreachable','Incomplete') } | Select-Object IPAddress,LinkLayerAddress | ConvertTo-Json -Compress"
+    ], { windowsHide: true, timeout: 8000, maxBuffer: 30000 });
+    const parsed = JSON.parse(neighbourResult.stdout || "[]");
+    for (const entry of (Array.isArray(parsed) ? parsed : [parsed])) {
+      const ip = String(entry.IPAddress || "");
+      const mac = String(entry.LinkLayerAddress || "");
+      if (ip && mac && mac !== "00-00-00-00-00-00") macs.set(ip, mac.replace(/-/g, ":").toLowerCase());
+    }
+  } catch {}
   const devices = [{ ip: local.address, name: os.hostname() || "This PC", kind: "Local device", local: true }];
   for (const ip of candidates) {
     const mac = macs.get(ip);
@@ -194,7 +208,7 @@ const toolSpecs = [
   { type: "function", function: { name: "open_url", description: "Open an HTTP or HTTPS web address in the default browser immediately.", parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"], additionalProperties: false } } },
   { type: "function", function: { name: "list_workspace", description: "List files and folders in the selected workspace or a relative subfolder.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } },
   { type: "function", function: { name: "read_text_file", description: "Read a small text file inside the selected workspace.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false } } },
-  { type: "function", function: { name: "run_safe_command", description: "Run a read-only diagnostic command from the permitted list. Requires approval.", parameters: { type: "object", properties: { command: { type: "string", enum: ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"] } }, required: ["command"], additionalProperties: false } } },
+  { type: "function", function: { name: "run_safe_command", description: "Run a read-only diagnostic command from the permitted list immediately.", parameters: { type: "object", properties: { command: { type: "string", enum: ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"] } }, required: ["command"], additionalProperties: false } } },
   { type: "function", function: { name: "get_system_overview", description: "Read basic PC hardware, memory, uptime and local network summary.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "list_running_apps", description: "List running Windows applications and processes (read-only).", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "launch_approved_app", description: "Launch an approved built-in Windows app immediately.", parameters: { type: "object", properties: { app: { type: "string", enum: ["notepad","calculator","file_explorer","task_manager","paint","settings"] } }, required: ["app"], additionalProperties: false } } },
