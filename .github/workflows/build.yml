@@ -49,7 +49,7 @@ jobs:
       - name: Install cargo-apk2
         run: cargo install cargo-apk2 --locked
       - name: Build Android APK
-        run: cargo apk2 build --target aarch64-linux-android --lib --release
+        run: cargo apk2 build --target aarch64-linux-android --lib
       - name: Locate APK
         run: |
           mkdir -p dist
