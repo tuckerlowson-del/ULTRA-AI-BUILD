@@ -1,0 +1,28 @@
+name: ONE BRAIN AI CI Doctor
+
+on:
+  workflow_run:
+    workflows:
+      - ONE BRAIN development builds
+      - ONE BRAIN Android APK
+    types:
+      - completed
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  diagnose:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Diagnose failed build with Naoru
+        uses: clouddrove/naoru@v0
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          provider: openrouter
+          model: openrouter/free
+          max-log-lines: "500"
+          max-tokens: "2048"
+          fix-mode: off
