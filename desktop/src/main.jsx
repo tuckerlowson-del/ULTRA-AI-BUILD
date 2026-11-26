@@ -1,3 +1,4 @@
+import "./platform.js";
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Activity, Bot, BrainCircuit, CheckCircle2, ChevronDown, CircleStop, Command, Cpu, FolderOpen, Globe, KeyRound, Monitor, Play, Plus, Send, Settings2, ShieldCheck, Sparkles, SquareTerminal, Wifi, XCircle, Radar, RefreshCw } from "lucide-react";
