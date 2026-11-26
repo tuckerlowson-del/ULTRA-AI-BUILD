@@ -59,6 +59,7 @@ export component MainWindow inherits Window {
     in-out property <string> prompt: "";
     in-out property <string> api_key_input: "";
     in-out property <string> model_id: "openai/gpt-4o-mini";\n    in-out property <string> available_models: "Save your key and click Load all models.";\n    in-out property <bool> update_available: false;
+    in-out property <string> system_stats: "System stats not loaded.";
     in-out property <bool> control_enabled: false;
     in-out property <string> control_text: "";
     in-out property <string> control_log: "Computer control is off.";
@@ -76,6 +77,7 @@ export component MainWindow inherits Window {
     callback clear_conversation();
     callback toggle_notifications(bool);
     callback toggle_fullscreen();\n    callback toggle_maximize();\n    callback discover_models();\n    callback install_update();
+    callback refresh_system_stats();
     callback control_move(string, string);
     callback control_click();
     callback control_type(string);
@@ -187,6 +189,16 @@ export component MainWindow inherits Window {
                                         LineEdit { text <=> root.prompt; placeholder-text: "Ask your AI network anything…"; horizontal-stretch: 1; }
                                         OBButton { label: "Send prompt  ➜"; primary: true; width: 142px; clicked => { root.send_prompt(root.prompt, root.model_id); } }
                                     }
+                                }
+                            }
+                            Rectangle {
+                                background: #10283a; border-radius: 10px; border-width: 1px; border-color: #29445d; height: 48px;
+                                HorizontalLayout {
+                                    padding-left: 12px; padding-right: 12px;
+                                    Text { text: "SYSTEM MONITOR"; color: #6fdcc6; font-size: 9px; vertical-alignment: center; }
+                                    Rectangle { horizontal-stretch: 1; }
+                                    Text { text: root.system_stats; color: #b5c9dd; font-size: 10px; vertical-alignment: center; }
+                                    OBButton { label: "Refresh stats"; width: 108px; compact: true; clicked => { root.refresh_system_stats(); } }
                                 }
                             }
                             HorizontalLayout {
