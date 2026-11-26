@@ -9,7 +9,18 @@ use std::sync::{
 const UPDATE_ENDPOINT: &str = "https://one-brain-site.pages.dev/api/update";
 const OPENROUTER_ENDPOINT: &str = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODELS_ENDPOINT: &str = "https://openrouter.ai/api/v1/models";
-const MAX_PARALLEL_MODELS: usize = 5;
+const MAX_PARALLEL_MODELS: usize = 20;
+
+#[derive(Deserialize)]
+struct ModelsResponse {
+    data: Vec<ModelInfo>,
+}
+
+#[derive(Deserialize)]
+struct ModelInfo {
+    id: String,
+    name: Option<String>,
+}
 
 #[derive(Deserialize)]
 struct ChatResponse {
@@ -30,6 +41,7 @@ pub fn run() {
     let ui = MainWindow::new().expect("could not create ONE BRAIN window");
     let api_key: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     let notifications = Arc::new(AtomicBool::new(true));
+    let update_download_url = Arc::new(Mutex::new(None::<String>));
 
     let key_store = Arc::clone(&api_key);
     let weak_for_save = ui.as_weak();
@@ -82,6 +94,56 @@ pub fn run() {
                             window.set_api_connected(false);
                             window.set_status_text(format!("Connection failed: {error}").into());
                         }
+                    }
+                }
+            });
+        });
+    });
+
+    let key_for_discovery = Arc::clone(&api_key);
+    let weak_for_discovery = ui.as_weak();
+    ui.on_discover_models(move || {
+        let key = key_for_discovery.lock().expect("API key lock poisoned").clone();
+        let Some(key) = key else {
+            if let Some(window) = weak_for_discovery.upgrade() {
+                window.set_status_text("Save your OpenRouter API key before loading the model catalogue.".into());
+            }
+            return;
+        };
+        if let Some(window) = weak_for_discovery.upgrade() {
+            window.set_status_text("Loading the OpenRouter model catalogue…".into());
+        }
+        let weak = weak_for_discovery.clone();
+        std::thread::spawn(move || {
+            let result = reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+                .map_err(|e| e.to_string())
+                .and_then(|client| client.get(OPENROUTER_MODELS_ENDPOINT)
+                    .bearer_auth(key)
+                    .header("User-Agent", "ONE-BRAIN")
+                    .send().map_err(|e| e.to_string())?
+                    .error_for_status().map_err(|e| e.to_string())?
+                    .json::<ModelsResponse>().map_err(|e| e.to_string()))
+                .map(|mut catalog| {
+                    catalog.data.sort_by(|a, b| a.id.cmp(&b.id));
+                    let count = catalog.data.len();
+                    let listing = catalog.data.into_iter().map(|model| {
+                        match model.name {
+                            Some(name) if name != model.id => format!("{} — {}", model.id, name),
+                            _ => model.id
+                        }
+                    }).collect::<Vec<_>>().join("\\n");
+                    (count, listing)
+                });
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(window) = weak.upgrade() {
+                    match result {
+                        Ok((count, listing)) => {
+                            window.set_available_models(listing.into());
+                            window.set_status_text(format!("Loaded {count} models from OpenRouter. Availability and billing are provider-dependent.").into());
+                        }
+                        Err(error) => window.set_status_text(format!("Model catalogue failed: {error}").into())
                     }
                 }
             });
@@ -221,6 +283,8 @@ pub fn run() {
                     match result {
                         Ok(release) => {
                             let latest = release["tag_name"].as_str().unwrap_or("unknown");
+                            let windows_url = release["windows"]["download_url"].as_str().map(str::to_string);
+                            *url_store.lock().expect("update URL lock poisoned") = windows_url.clone();
                             let current = env!("CARGO_PKG_VERSION");
                             let latest_clean = latest.trim_start_matches('v');
                             let is_newer = semver::Version::parse(latest_clean)
@@ -246,6 +310,62 @@ pub fn run() {
                 }
             });
         });
+    });
+
+    let weak_for_install = ui.as_weak();
+    let url_for_install = Arc::clone(&update_download_url);
+    ui.on_install_update(move || {
+        let url = url_for_install.lock().expect("update URL lock poisoned").clone();
+        let Some(url) = url else {
+            if let Some(window) = weak_for_install.upgrade() {
+                window.set_status_text("Check for updates first. No Windows update is ready.".into());
+            }
+            return;
+        };
+        #[cfg(windows)]
+        {
+            let weak = weak_for_install.clone();
+            std::thread::spawn(move || {
+                let result = (|| -> Result<(std::path::PathBuf, std::path::PathBuf), String> {
+                    use std::io::Write;
+                    let client = reqwest::blocking::Client::builder()
+                        .timeout(std::time::Duration::from_secs(300))
+                        .build().map_err(|e| e.to_string())?;
+                    let mut response = client.get(&url).header("User-Agent", "ONE-BRAIN-Updater")
+                        .send().map_err(|e| e.to_string())?
+                        .error_for_status().map_err(|e| e.to_string())?;
+                    let current_exe = std::env::current_exe().map_err(|e| e.to_string())?;
+                    let temp_dir = std::env::temp_dir();
+                    let download = temp_dir.join("one-brain-update.exe");
+                    let mut file = std::fs::File::create(&download).map_err(|e| e.to_string())?;
+                    std::io::copy(&mut response, &mut file).map_err(|e| e.to_string())?;
+                    file.flush().map_err(|e| e.to_string())?;
+                    let script = temp_dir.join("one-brain-update.cmd");
+                    let pid = std::process::id();
+                    let body = format!(
+                        "@echo off\r\n:wait\r\ntasklist /FI \"PID eq {pid}\" | find \"{pid}\" >nul\r\nif not errorlevel 1 (timeout /t 1 /nobreak >nul & goto wait)\r\ncopy /Y \"{}\" \"{}\" >nul\r\nif errorlevel 1 exit /b 1\r\nstart \"\" \"{}\"\r\ndel \"{}\"\r\ndel \"%~f0\"\r\n",
+                        download.display(), current_exe.display(), current_exe.display(), download.display()
+                    );
+                    std::fs::write(&script, body).map_err(|e| e.to_string())?;
+                    std::process::Command::new("cmd").args(["/C", "start", "", &format!("\"{}\"", script.display())])
+                        .spawn().map_err(|e| e.to_string())?;
+                    Ok((download, script))
+                })();
+                let _ = slint::invoke_from_event_loop(move || {
+                    if let Some(window) = weak.upgrade() {
+                        match result {
+                            Ok(_) => window.set_status_text("Update downloaded. ONE BRAIN will close, replace its EXE, and restart.".into()),
+                            Err(error) => window.set_status_text(format!("Update installation failed: {error}").into())
+                        }
+                    }
+                });
+                if result.is_ok() { std::thread::sleep(std::time::Duration::from_millis(700)); std::process::exit(0); }
+            });
+        }
+        #[cfg(not(windows))]
+        if let Some(window) = weak_for_install.upgrade() {
+            window.set_status_text("In-app installation is currently supported on Windows. Use the website download on this device.".into());
+        }
     });
 
     let weak_for_control = ui.as_weak();
