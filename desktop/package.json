@@ -28,9 +28,25 @@
   "build": {
     "appId": "com.tuckerlowson.onebrain",
     "productName": "ONE BRAIN",
-    "directories": { "output": "dist-installer" },
-    "files": ["dist/**/*", "electron/**/*", "package.json", "node_modules/**/*"],
-    "win": { "target": ["nsis"], "artifactName": "ONE-BRAIN-Setup-${version}.${ext}" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true }
+    "directories": {
+      "output": "dist-installer"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "ONE-BRAIN-DEV-BUILD-${env.VITE_BUILD_NUMBER}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
   }
 }
