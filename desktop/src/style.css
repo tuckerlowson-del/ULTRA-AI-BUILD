@@ -55,3 +55,15 @@
 .radar-red .radar-ring{border-color:#984c5a}.radar-red .radar-cross{background:#984c5a66}.radar-red .radar-sweep{background:conic-gradient(from 0deg,transparent 0deg,#ef66770b 35deg,#ef667766 75deg,transparent 80deg)}
 .radar-white .radar-wrap{border-color:#74869a;background:radial-gradient(circle,#303b47 0%,#1a2632 48%,#0b121b 100%)}
 .radar-white .radar-ring{border-color:#8799aa}.radar-white .radar-cross{background:#8799aa66}.radar-white .radar-sweep{background:conic-gradient(from 0deg,transparent 0deg,#d9e6f00b 35deg,#d9e6f066 75deg,transparent 80deg)}
+
+/* Ford-branded startup screen */
+.startup-screen{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 35%,#173b62 0%,#091522 48%,#050a12 100%);animation:splash-in .25s ease-out}
+.startup-content{width:min(90vw,360px);display:flex;flex-direction:column;align-items:center;text-align:center}
+.ford-logo-oval{width:224px;height:112px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#1c65b4,#0b2d5b);border:5px solid #d9f3ff;outline:2px solid #4fc9ff;box-shadow:0 0 38px #43bdf766,inset 0 0 18px #071b36;color:#fff;font-family:Georgia,serif;font-style:italic;font-weight:bold;font-size:53px;letter-spacing:-3px;text-shadow:0 2px 3px #03152a}
+.startup-title{font-size:22px;font-weight:800;letter-spacing:4px;margin-top:28px;color:#f0f7ff}
+.startup-subtitle{font:9px 'DM Mono';letter-spacing:2px;color:#80a9cd;margin-top:7px}
+.startup-loader{width:190px;height:4px;background:#1a3049;border-radius:9px;overflow:hidden;margin-top:32px}
+.startup-loader span{display:block;width:45%;height:100%;background:linear-gradient(90deg,#55e0cb,#5cbcff);border-radius:9px;animation:splash-progress 5s linear forwards}
+.startup-status{font:9px 'DM Mono';letter-spacing:2px;color:#7fa2c2;margin-top:16px}
+.startup-countdown{font:28px 'DM Mono';font-weight:500;color:#e7f5ff;margin-top:8px}
+@keyframes splash-progress{from{width:0}to{width:100%}}@keyframes splash-in{from{opacity:0}to{opacity:1}}

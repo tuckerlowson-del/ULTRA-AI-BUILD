@@ -46,7 +46,8 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "ONE-BRAIN-Setup-${version}.${ext}"
+      "artifactName": "ONE-BRAIN-Setup-${version}.${ext}",
+      "icon": "assets/onebrain.ico"
     },
     "nsis": {
       "oneClick": false,

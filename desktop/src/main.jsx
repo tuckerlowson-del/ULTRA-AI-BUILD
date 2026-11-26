@@ -5,12 +5,12 @@ import { Activity, Bot, BrainCircuit, CheckCircle2, ChevronDown, CircleStop, Com
 import "./style.css";
 
 function App() {
-  const [apiKey,setApiKey]=useState(""); const [model,setModel]=useState("openai/gpt-4o-mini");
+  const [apiKey,setApiKey]=useState(""); const [model,setModel]=useState("openai/gpt-4o");
   const [task,setTask]=useState(""); const [events,setEvents]=useState([]); const [status,setStatus]=useState("Ready");
   const [running,setRunning]=useState(false); const [workspace,setWorkspace]=useState("Loading workspace…");
   const [preview,setPreview]=useState(""); const [page,setPage]=useState("agent");
-  const [radarStyle,setRadarStyle]=useState("emerald"); const [showSettings,setShowSettings]=useState(false); const [updateInfo,setUpdateInfo]=useState({status:"idle",message:"Checking update status…",version:null,percent:0}); const [updateBusy,setUpdateBusy]=useState(false); const [chatDraft,setChatDraft]=useState(""); const [chatMessages,setChatMessages]=useState([]); const [chatBusy,setChatBusy]=useState(false); const [mdt,setMdt]=useState({devices:[],interfaceName:"Checking…",updatedAt:null}); const [mdtBusy,setMdtBusy]=useState(false);
-  useEffect(()=>{ if(window.onebrain.getUpdateStatus)window.onebrain.getUpdateStatus().then(setUpdateInfo).catch(()=>{}); const off=window.onebrain.onUpdateStatus?.(setUpdateInfo); if(window.onebrain.isMobile) window.onebrain.checkForUpdates?.(); return off; },[]);
+  const [splash,setSplash]=useState(true); const [splashCount,setSplashCount]=useState(5); const [radarStyle,setRadarStyle]=useState("emerald"); const [showSettings,setShowSettings]=useState(false); const [updateInfo,setUpdateInfo]=useState({status:"idle",message:"Checking update status…",version:null,percent:0}); const [updateBusy,setUpdateBusy]=useState(false); const [chatDraft,setChatDraft]=useState(""); const [chatMessages,setChatMessages]=useState([]); const [chatBusy,setChatBusy]=useState(false); const [mdt,setMdt]=useState({devices:[],interfaceName:"Checking…",updatedAt:null}); const [mdtBusy,setMdtBusy]=useState(false);
+  useEffect(()=>{const started=Date.now();const timer=setInterval(()=>{const left=Math.max(0,5-Math.floor((Date.now()-started)/1000));setSplashCount(left);if(left===0){clearInterval(timer);setSplash(false);}},100);return()=>clearInterval(timer);},[]);\n  useEffect(()=>{ if(window.onebrain.getUpdateStatus)window.onebrain.getUpdateStatus().then(setUpdateInfo).catch(()=>{}); const off=window.onebrain.onUpdateStatus?.(setUpdateInfo); if(window.onebrain.isMobile) window.onebrain.checkForUpdates?.(); return off; },[]);
   useEffect(()=>{ window.onebrain.getWorkspace().then(setWorkspace); return window.onebrain.onAgentEvent(e=>{
     setEvents(old=>[{...e,id:Date.now()+Math.random()},...old].slice(0,80));
     if(e.type==="status")setStatus(e.message);
@@ -19,7 +19,7 @@ function App() {
     if(e.type==="error")setStatus("Agent error");
   });},[]);
   const refreshMdt=async()=>{setMdtBusy(true);try{setMdt(await window.onebrain.getNetworkDevices());}catch(e){setMdt(old=>({...old,error:e.message}));}finally{setMdtBusy(false);}};
-  useEffect(()=>{if(page!=="mdt")return;refreshMdt();const timer=setInterval(refreshMdt,3000);return()=>clearInterval(timer);},[page]);
+  useEffect(()=>{if(page!=="mdt")return;refreshMdt();const timer=setInterval(refreshMdt,1000);return()=>clearInterval(timer);},[page]);
   const run=async()=>{if(!task.trim())return;setRunning(true);setStatus("Agent is working…");setEvents(old=>[{id:Date.now(),type:"user",message:task,at:new Date().toISOString()},...old]);try{await window.onebrain.runAgent(task,apiKey,model);}catch(e){setStatus(e.message);}finally{setRunning(false);}};
   const choose=async()=>setWorkspace(await window.onebrain.chooseWorkspace());
   const nav=[["agent","PC Control",Bot],["chat","AI Chat & Research",MessageSquare],["phone","Phone Control",Smartphone],["activity","Activity",Activity],["mdt","FORD MDT",Radar],["settings","Settings",Settings2]].filter(([id])=>!window.onebrain.isMobile||!["agent","phone"].includes(id));
@@ -73,6 +73,7 @@ function App() {
       <footer><span><span className="footer-led"/> SYSTEM READY</span><span>{status}</span><span>ONE BRAIN · DEV BUILD #{import.meta.env.VITE_BUILD_NUMBER || "LOCAL"}</span></footer>
     </main>
     {showSettings&&<div className="modal-backdrop" onClick={()=>setShowSettings(false)}><div className="modal" onClick={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setShowSettings(false)}><XCircle size={18}/></button><h2>Connect your AI</h2><p>OpenRouter provides access to the model catalogue.</p><label>API KEY</label><input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="sk-or-…"/><label>MODEL ID</label><input value={model} onChange={e=>setModel(e.target.value)}/><button className="run-btn full" onClick={()=>setShowSettings(false)}>Save for this session</button><small>Key stays in app memory and is not persisted.</small></div></div>}
+    {splash&&<div className="startup-screen"><div className="startup-content"><div className="ford-logo-oval">Ford</div><div className="startup-title">ONE BRAIN</div><div className="startup-subtitle">FORD INTELLIGENCE SYSTEM</div><div className="startup-loader"><span/></div><div className="startup-status">INITIALIZING SYSTEM</div><div className="startup-countdown">{splashCount}</div></div></div>}
   </div>;
 }
 function Event({event:e}){const icon=e.type==="error"?<XCircle size={16}/>:e.type==="final"?<CheckCircle2 size={16}/>:e.type==="tool"?<SquareTerminal size={16}/>:e.type==="tool_result"?<CheckCircle2 size={16}/>:e.type==="user"?<Bot size={16}/>:<Activity size={16}/>;return <div className={"event "+(e.type||"")}><div className="event-icon">{icon}</div><div className="event-body"><b>{e.message}</b>{e.tool&&<small>{e.tool}</small>}{e.result&&typeof e.result==="string"&&<small>{e.result}</small>}</div><time>{e.at?new Date(e.at).toLocaleTimeString(): ""}</time></div>}

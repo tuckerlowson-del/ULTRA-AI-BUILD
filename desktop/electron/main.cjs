@@ -186,7 +186,7 @@ ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
   if (!task || !String(task).trim()) throw new Error("Enter a task first.");
   if (!key) throw new Error("Add your OpenRouter API key in the app first.");
   running = true; stopRequested = false;
-  const chosenModel = model || "openai/gpt-4o-mini";
+  const chosenModel = model || "openai/gpt-4o";
   const messages = [
     { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. Work only toward the user's stated task. Inspect before acting. Use tools when needed, verify outcomes, and report clearly. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Ask before every click, keystroke, URL open, or diagnostic command. The selected workspace is the only file area you may inspect. If a tool is denied, do not retry it. Stop when asked." },
     { role: "user", content: String(task).slice(0, 6000) }
