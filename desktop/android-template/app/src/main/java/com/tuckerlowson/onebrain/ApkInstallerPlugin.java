@@ -8,6 +8,8 @@ import com.getcapacitor.*;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import androidx.core.content.FileProvider;
 import java.io.*;
+import java.net.*;
+import java.util.Enumeration;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
@@ -60,6 +62,76 @@ public class ApkInstallerPlugin extends Plugin {
             } catch (Exception e) { call.reject(e.getMessage(), e); }
             finally { if (connection != null) connection.disconnect(); }
         });
+    }
+
+    @PluginMethod
+    public void getNetworkDevices(PluginCall call) {
+        try {
+            String localAddress = null;
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces != null && interfaces.hasMoreElements()) {
+                NetworkInterface network = interfaces.nextElement();
+                if (!network.isUp() || network.isLoopback()) continue;
+                Enumeration<InetAddress> addresses = network.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    InetAddress address = addresses.nextElement();
+                    if (address instanceof Inet4Address && !address.isLoopbackAddress()) {
+                        localAddress = address.getHostAddress();
+                        break;
+                    }
+                }
+                if (localAddress != null) break;
+            }
+            JSArray devices = new JSArray();
+            if (localAddress != null) {
+                JSObject local = new JSObject();
+                local.put("ip", localAddress);
+                local.put("name", "This phone");
+                local.put("kind", "Local device");
+                local.put("local", true);
+                devices.put(local);
+            }
+            File arp = new File("/proc/net/arp");
+            if (arp.isFile()) {
+                try (BufferedReader reader = new BufferedReader(new FileReader(arp))) {
+                    String line;
+                    reader.readLine();
+                    while ((line = reader.readLine()) != null) {
+                        String[] fields = line.trim().split("\\s+");
+                        if (fields.length < 4) continue;
+                        String ip = fields[0];
+                        String mac = fields[3].toLowerCase();
+                        String[] octets = ip.split("\\.");
+                        if (octets.length != 4 || mac.equals("00:00:00:00:00:00")) continue;
+                        boolean privateIp = octets[0].equals("10") ||
+                            (octets[0].equals("172") && Integer.parseInt(octets[1]) >= 16 && Integer.parseInt(octets[1]) <= 31) ||
+                            (octets[0].equals("192") && octets[1].equals("168"));
+                        if (!privateIp || ip.equals(localAddress)) continue;
+                        boolean duplicate = false;
+                        for (int i = 0; i < devices.length(); i++) {
+                            JSObject existing = devices.getJSONObject(i);
+                            if (ip.equals(existing.optString("ip"))) { duplicate = true; break; }
+                        }
+                        if (duplicate) continue;
+                        JSObject device = new JSObject();
+                        device.put("ip", ip);
+                        device.put("mac", mac);
+                        device.put("name", "Detected device");
+                        device.put("kind", "LAN device");
+                        device.put("local", false);
+                        devices.put(device);
+                    }
+                }
+            }
+            JSObject result = new JSObject();
+            result.put("devices", devices);
+            result.put("interfaceName", localAddress == null ? "No active IPv4 interface" : localAddress);
+            result.put("updatedAt", java.time.Instant.now().toString());
+            result.put("method", "Passive local ARP neighbour table");
+            call.resolve(result);
+        } catch (Exception e) {
+            call.reject("Local network information is unavailable: " + e.getMessage(), e);
+        }
     }
 
     @PluginMethod

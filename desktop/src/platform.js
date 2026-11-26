@@ -97,7 +97,11 @@ if (!window.onebrain) {
       return workspace;
     },
     async getNetworkDevices() {
-      return { devices: [], interfaceName: "Android LAN discovery is not implemented in this build", updatedAt: new Date().toISOString() };
+      if (ApkInstaller) {
+        try { return await ApkInstaller.getNetworkDevices(); }
+        catch (error) { return { devices: [], interfaceName: error.message || "Local network details unavailable", updatedAt: new Date().toISOString() }; }
+      }
+      return { devices: [], interfaceName: "Android network details unavailable", updatedAt: new Date().toISOString() };
     },
     onAgentEvent(callback) {
       listeners.add(callback);
