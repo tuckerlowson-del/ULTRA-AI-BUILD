@@ -1,5 +1,9 @@
 name: ONE BRAIN Windows installer
 
+concurrency:
+  group: one-brain-windows-release
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
