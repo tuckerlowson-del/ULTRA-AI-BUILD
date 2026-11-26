@@ -74,3 +74,15 @@
 .mdt-login h2{font-size:20px;margin:8px 0}.mdt-login p{font-size:11px;line-height:1.6;color:#819bb4;margin:0 0 14px}
 .mdt-login label{text-align:left}.mdt-login input{width:100%;background:#0b1624;border:1px solid #2a4056;border-radius:7px;padding:11px;color:#e8f2fd;margin-bottom:12px}
 .mdt-login .run-btn{width:100%;margin:0}.mdt-login-hint{display:block;color:#6886a1;font-size:9px;margin-top:12px}.mdt-login-error{display:block;color:#ff879b;font-size:10px;margin:0 0 10px}
+
+
+/* Live desktop preview and custom operator cursor */
+.preview-frame{position:relative;width:100%;overflow:hidden;border-radius:8px;background:#050b13}
+.preview-image{display:block;width:100%;height:auto;object-fit:contain}
+.preview-cursor{position:absolute;z-index:5;pointer-events:none;transform:translate(-2px,-2px);filter:drop-shadow(0 1px 4px #000b);transition:left .05s linear,top .05s linear}
+.preview-cursor.clicked{filter:drop-shadow(0 0 8px #63e7d2)}
+.preview-cursor.clicked:after{content:"";position:absolute;left:2px;top:2px;width:18px;height:18px;border:2px solid #66f0d7;border-radius:50%;animation:cursor-click .35s ease-out forwards}
+@keyframes cursor-click{from{transform:scale(.4);opacity:1}to{transform:scale(1.7);opacity:0}}
+.radar-sweep{animation:none!important;transition:transform .045s linear}
+.radar-point.remote{animation:radar-pulse 1.6s ease-in-out infinite}
+@keyframes radar-pulse{0%,100%{box-shadow:0 0 6px #ff687e;opacity:.85}50%{box-shadow:0 0 18px #ff687e;opacity:1}}
