@@ -89,7 +89,7 @@ async function computerAction(kind, args) {
     const allowed = { ENTER: Key.Enter, TAB: Key.Tab, ESC: Key.Escape, SPACE: Key.Space, BACKSPACE: Key.Backspace, UP: Key.Up, DOWN: Key.Down, LEFT: Key.Left, RIGHT: Key.Right };
     const key = allowed[String(args.key || "").toUpperCase()];
     if (!key) throw new Error("That key is not in the permitted key list.");
-    await keyboard.type(key);
+    await keyboard.pressKey(key);
     return { ok: true, key: String(args.key).toUpperCase() };
   }
 }
