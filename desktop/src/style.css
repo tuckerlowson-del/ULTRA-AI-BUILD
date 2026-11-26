@@ -41,3 +41,17 @@
 @media(max-width:760px){.chat-page{min-height:65vh}.chat-transcript{max-height:none;min-height:280px}.chat-compose{align-items:stretch;flex-direction:column}.chat-compose .run-btn{width:100%}.chat-toolbar{flex-wrap:wrap}.phone-grid{grid-template-columns:1fr}}
 
 .update-panel{grid-column:1/-1}.update-state{font:9px 'DM Mono';color:#7e9bb5}.update-state.available,.update-state.downloaded,.update-state.current{color:#65ddbd}.update-state.error{color:#ff879b}.update-actions{display:flex;gap:10px;flex-wrap:wrap}.update-actions .outline-btn{width:auto}.update-actions .run-btn{margin:0}.update-progress{height:6px;border-radius:8px;background:#081421;overflow:hidden;margin:10px 0}.update-progress span{display:block;height:100%;background:linear-gradient(90deg,#58dfc7,#4aa9d6);transition:width .2s}.update-version{font:10px 'DM Mono';color:#b9d3e6}.update-footnote{display:block;color:#647f99;font-size:9px;margin-top:12px}
+
+/* Radar palette controls */
+.radar-style-picker{display:flex;align-items:center;justify-content:center;gap:7px;flex-wrap:wrap;margin:8px auto 12px}
+.radar-style-picker>span{font:9px 'DM Mono';letter-spacing:1px;color:#7894ad;margin-right:5px}
+.radar-style-picker button{border:1px solid #2b455d;background:#102033;color:#9db6ce;border-radius:6px;padding:6px 9px;font-size:9px;cursor:pointer}
+.radar-style-picker button.selected{border-color:#63dcca;color:#e8f7ff;background:#173d47}
+.radar-blue .radar-wrap{border-color:#3975a8;background:radial-gradient(circle,#12314b 0%,#0b2034 48%,#07131f 100%)}
+.radar-blue .radar-ring{border-color:#397bb4}.radar-blue .radar-cross{background:#397bb466}.radar-blue .radar-sweep{background:conic-gradient(from 0deg,transparent 0deg,#58a9f00b 35deg,#58a9f066 75deg,transparent 80deg)}
+.radar-amber .radar-wrap{border-color:#8d7136;background:radial-gradient(circle,#453516 0%,#29200e 48%,#171107 100%)}
+.radar-amber .radar-ring{border-color:#987b3c}.radar-amber .radar-cross{background:#987b3c66}.radar-amber .radar-sweep{background:conic-gradient(from 0deg,transparent 0deg,#e8bd500b 35deg,#e8bd5066 75deg,transparent 80deg)}
+.radar-red .radar-wrap{border-color:#8e4653;background:radial-gradient(circle,#421b28 0%,#2b121c 48%,#170a10 100%)}
+.radar-red .radar-ring{border-color:#984c5a}.radar-red .radar-cross{background:#984c5a66}.radar-red .radar-sweep{background:conic-gradient(from 0deg,transparent 0deg,#ef66770b 35deg,#ef667766 75deg,transparent 80deg)}
+.radar-white .radar-wrap{border-color:#74869a;background:radial-gradient(circle,#303b47 0%,#1a2632 48%,#0b121b 100%)}
+.radar-white .radar-ring{border-color:#8799aa}.radar-white .radar-cross{background:#8799aa66}.radar-white .radar-sweep{background:conic-gradient(from 0deg,transparent 0deg,#d9e6f00b 35deg,#d9e6f066 75deg,transparent 80deg)}
