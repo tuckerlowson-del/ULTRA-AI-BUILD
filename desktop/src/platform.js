@@ -61,7 +61,8 @@ if (!window.onebrain) {
           setUpdate("current", "ONE BRAIN is up to date (v" + currentVersion + ").", { version: currentVersion, percent: 0 });
         } else {
           window.__oneBrainAndroidUpdate = { url: asset.browser_download_url, version: latestVersion };
-          setUpdate("available", "Version " + latestVersion + " is available.", { version: latestVersion, percent: 0 });
+          setUpdate("available", "Version " + latestVersion + " is available. Downloading automatically…", { version: latestVersion, percent: 0 });
+          await window.onebrain.downloadUpdate();
         }
       } catch (error) {
         setUpdate("error", error.message || "Could not check for Android updates.");
