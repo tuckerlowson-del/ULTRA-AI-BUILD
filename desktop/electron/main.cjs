@@ -19,7 +19,7 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
-  if (process.env.VITE_DEV_SERVER_URL) mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+  if (!app.isPackaged) mainWindow.loadURL("http://127.0.0.1:5173");
   else mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
 }
 app.whenReady().then(() => {
@@ -46,7 +46,7 @@ async function captureScreen() {
   if (!sources.length) throw new Error("No screen source is available.");
   const image = sources[0].thumbnail.toDataURL();
   emit("screen", "Desktop preview refreshed.", { image });
-  return { ok: true, width: sources[0].thumbnail.getSize().width, height: sources[0].thumbnail.getSize().height, previewSentToUI: true };
+  return { ok: true, width: sources[0].thumbnail.getSize().width, height: sources[0].thumbnail.getSize().height, image };
 }
 async function computerAction(kind, args) {
   const { mouse, keyboard, Button, Key, Point } = require("@nut-tree/nut-js");
