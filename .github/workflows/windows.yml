@@ -31,6 +31,8 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install
+      - name: Assign a unique release version
+        run: npm version 0.5.${{ github.run_number }} --no-git-tag-version
       - name: Build React interface
         run: npm run build
       - name: Package Windows installer
