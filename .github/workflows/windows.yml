@@ -39,7 +39,7 @@ jobs:
           "version=$VERSION" >> $env:GITHUB_OUTPUT
       - name: Build React interface
         env:
-          VITE_APP_VERSION: ${{ steps.appversion.outputs.version }}
+          VITE_APP_VERSION: 0.6.1.${{ github.run_number }}
         run: npm run build
       - name: Package Windows installer
         run: npm run dist:win
