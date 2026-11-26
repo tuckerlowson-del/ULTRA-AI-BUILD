@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell } = require(
 const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const fs = require("node:fs/promises");
-const { execFile } = require("node:child_process");
+const { execFile, spawn } = require("node:child_process");
 const { promisify } = require("node:util");
 const os = require("node:os");
 const execFileAsync = promisify(execFile);
@@ -80,7 +80,7 @@ ipcMain.handle("mdt:network", async () => {
   if (mdtCache && Date.now() - mdtCacheAt < 15000) return { ...mdtCache, cached: true };
   const interfaces = Object.values(os.networkInterfaces()).flat().filter(item =>
     item && item.family === "IPv4" && !item.internal &&
-    (/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)/.test(item.address))
+    (/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(item.address))
   );
   const local = interfaces[0] || null;
   if (!local) return { devices: [], interfaceName: "No active private IPv4 network", updatedAt: new Date().toISOString(), method: "No private LAN interface found" };
@@ -105,7 +105,7 @@ ipcMain.handle("mdt:network", async () => {
     arpText = result.stdout || "";
   } catch {}
   const macs = new Map();
-  const rowPattern = /((?:\\d{1,3}\\.){3}\\d{1,3})\\s+([0-9a-f-]{11,17})/ig;
+  const rowPattern = /((?:\d{1,3}\.){3}\d{1,3})\s+([0-9a-f-]{11,17})/ig;
   for (const match of arpText.matchAll(rowPattern)) macs.set(match[1], match[2].replace(/-/g, ":").toLowerCase());
   const devices = [{ ip: local.address, name: os.hostname() || "This PC", kind: "Local device", local: true }];
   for (const ip of candidates) {
@@ -202,7 +202,7 @@ async function executeTool(name, args) {
   }
   if (name === "list_running_apps") {
     const result = await execFileAsync("tasklist.exe", ["/FO", "CSV", "/NH"], { windowsHide: true, timeout: 10000, maxBuffer: 50000 });
-    const rows = result.stdout.split(/\\r?\\n/).filter(Boolean).slice(0, 120);
+    const rows = result.stdout.split(/\r?\n/).filter(Boolean).slice(0, 120);
     return rows.map(line => { const cols = line.match(/"([^"]*)"/g) || []; return { process: (cols[0] || "").replace(/"/g, ""), pid: (cols[1] || "").replace(/"/g, ""), memory: (cols[4] || "").replace(/"/g, "") }; });
   }
   if (name === "launch_approved_app") {
@@ -211,12 +211,12 @@ async function executeTool(name, args) {
     if (!target) throw new Error("This app is not on the approved launch list.");
     if (!await approveAction("ONE BRAIN wants to open " + args.app.replace(/_/g, " ") + ".")) return { ok: false, denied: true };
     if (target.endsWith(":")) await shell.openExternal(target);
-    else await execFileAsync(target, [], { windowsHide: false, timeout: 5000 });
+    else { const child = spawn(target, [], { detached: true, stdio: "ignore", windowsHide: false }); child.unref(); }
     return { ok: true, launched: args.app };
   }
   if (name === "open_workspace_folder") {
     const target = withinWorkspace(args.path || ".");
-    if (!await approveAction("Open this folder in File Explorer?\\n" + target)) return { ok: false, denied: true };
+    if (!await approveAction("Open this folder in File Explorer?\n" + target)) return { ok: false, denied: true };
     const error = await shell.openPath(target);
     if (error) throw new Error(error);
     return { ok: true, path: target };
