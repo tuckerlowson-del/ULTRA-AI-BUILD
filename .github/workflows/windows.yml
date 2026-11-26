@@ -34,9 +34,9 @@ jobs:
       - name: Assign a unique release version
         id: appversion
         run: |
-          VERSION="0.6.${{ github.run_number }}"
-          npm version "$VERSION" --no-git-tag-version
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          $VERSION = "0.6.${{ github.run_number }}"
+          npm version $VERSION --no-git-tag-version
+          "version=$VERSION" >> $env:GITHUB_OUTPUT
       - name: Build React interface
         env:
           VITE_APP_VERSION: ${{ steps.appversion.outputs.version }}
