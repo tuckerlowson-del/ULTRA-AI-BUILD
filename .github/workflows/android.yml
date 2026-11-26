@@ -55,16 +55,37 @@ jobs:
         run: npx cap add android
       - name: Install native Android updater
         run: |
-          mkdir -p android/app/src/main/java/com/tuckerlowson/onebrain android/app/src/main/res/xml
-          cp android-template/app/src/main/java/com/tuckerlowson/onebrain/ApkInstallerPlugin.java android/app/src/main/java/com/tuckerlowson/onebrain/
-          cp android-template/app/src/main/java/com/tuckerlowson/onebrain/MainActivity.java android/app/src/main/java/com/tuckerlowson/onebrain/
-          cp android-template/app/src/main/res/xml/onebrain_file_paths.xml android/app/src/main/res/xml/
           python3 - <<'PY'
           from pathlib import Path
-          p=Path("android/app/src/main/AndroidManifest.xml")
-          s=p.read_text()
-          s=s.replace('<application', '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\\n    <application', 1)
-          provider='''        <provider
+          import re
+          root = Path("android/app/src/main")
+          main = next(root.rglob("MainActivity.java"), None) or next(root.rglob("MainActivity.kt"), None)
+          if main is None:
+              raise SystemExit("Capacitor MainActivity source was not found.")
+          source = main.read_text()
+          match = re.search(r"^\s*package\s+([\w.]+)", source, re.M)
+          if not match:
+              raise SystemExit("Could not determine Android application package.")
+          package = match.group(1)
+          plugin = Path("android-template/app/src/main/java/com/tuckerlowson/onebrain/ApkInstallerPlugin.java").read_text()
+          plugin = re.sub(r"^package [^;]+;", "package " + package + ";", plugin, count=1, flags=re.M)
+          (main.parent / "ApkInstallerPlugin.java").write_text(plugin)
+          if main.suffix == ".java":
+              activity = Path("android-template/app/src/main/java/com/tuckerlowson/onebrain/MainActivity.java").read_text()
+              activity = re.sub(r"^package [^;]+;", "package " + package + ";", activity, count=1, flags=re.M)
+          else:
+              activity = Path("android-template/app/src/main/java/com/tuckerlowson/onebrain/MainActivity.kt").read_text()
+              activity = re.sub(r"^package [^\n]+", "package " + package, activity, count=1, flags=re.M)
+          main.write_text(activity)
+          xml = Path("android-template/app/src/main/res/xml/onebrain_file_paths.xml")
+          (root / "res/xml").mkdir(parents=True, exist_ok=True)
+          (root / "res/xml/onebrain_file_paths.xml").write_text(xml.read_text())
+          manifest = root / "AndroidManifest.xml"
+          text = manifest.read_text()
+          if "REQUEST_INSTALL_PACKAGES" not in text:
+              text = text.replace("<application", '<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application', 1)
+          if "onebrain.fileprovider" not in text:
+              provider = '''        <provider
                       android:name="androidx.core.content.FileProvider"
                       android:authorities="${applicationId}.fileprovider"
                       android:exported="false"
@@ -74,16 +95,16 @@ jobs:
                           android:resource="@xml/onebrain_file_paths" />
                   </provider>
           '''
-          s=s.replace('</application>', provider + '    </application>', 1)
-          p.write_text(s)
-          p=Path("android/app/build.gradle")
-          s=p.read_text()
+              text = text.replace("</application>", provider + "    </application>", 1)
+          manifest.write_text(text)
+          gradle = Path("android/app/build.gradle")
+          text = gradle.read_text()
           import os
-          run=os.environ.get("GITHUB_RUN_NUMBER","1")
-          s=s.replace("versionCode 1", "versionCode " + run, 1)
-          s=s.replace('versionName "1.0"', 'versionName "' + os.environ.get("APP_VERSION","0.6.0") + '"', 1)
-          if all(os.environ.get(k) for k in ("ANDROID_KEYSTORE_BASE64","ANDROID_KEYSTORE_PASSWORD","ANDROID_KEY_ALIAS","ANDROID_KEY_PASSWORD")):
-              signing='''    signingConfigs {
+          run = os.environ.get("GITHUB_RUN_NUMBER", "1")
+          text = re.sub(r"versionCode\s+\d+", "versionCode " + run, text, count=1)
+          text = text.replace('versionName "1.0"', 'versionName "' + os.environ.get("APP_VERSION", "0.6.0") + '"', 1)
+          if all(os.environ.get(k) for k in ("ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD")):
+              signing = '''    signingConfigs {
                       release {
                           storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
                           storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
@@ -92,9 +113,9 @@ jobs:
                       }
                   }
           '''
-              s=s.replace("    buildTypes {", signing + "    buildTypes {", 1)
-              s=s.replace("        release {", "        release {\\n            signingConfig signingConfigs.release", 1)
-          p.write_text(s)
+              text = text.replace("    buildTypes {", signing + "    buildTypes {", 1)
+              text = text.replace("        release {", "        release {\n            signingConfig signingConfigs.release", 1)
+          gradle.write_text(text)
           PY
         env:
           APP_VERSION: ${{ steps.appversion.outputs.version }}
