@@ -44,7 +44,7 @@ ipcMain.handle("mdt:network", async () => {
     arpText = result.stdout || "";
   } catch {}
   const found = new Map();
-  const rowPattern = /((?:\\d{1,3}\\.){3}\\d{1,3})\\s+([0-9a-f-]{11,17})/ig;
+  const rowPattern = /((?:\d{1,3}\.){3}\d{1,3})\s+([0-9a-f-]{11,17})/ig;
   for (const match of arpText.matchAll(rowPattern)) {
     const ip = match[1];
     const mac = match[2].replace(/-/g, ":").toLowerCase();
