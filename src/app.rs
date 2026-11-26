@@ -6,7 +6,7 @@ use std::sync::{
     Arc, Mutex,
 };
 
-const UPDATE_ENDPOINT: &str = "https://one-brain-site.pages.dev/api/update";
+const UPDATE_ENDPOINT: &str = "https://one-brain-updater.tuckerlowson.workers.dev/api/update";
 const OPENROUTER_ENDPOINT: &str = "https://openrouter.ai/api/v1/chat/completions";
 const OPENROUTER_MODELS_ENDPOINT: &str = "https://openrouter.ai/api/v1/models";
 const MAX_PARALLEL_MODELS: usize = 20;
