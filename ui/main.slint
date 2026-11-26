@@ -58,7 +58,7 @@ export component MainWindow inherits Window {
     in-out property <string> transcript: "ONE BRAIN is ready.\n\nConnect your OpenRouter API key in Settings, choose model IDs, then start a conversation.";
     in-out property <string> prompt: "";
     in-out property <string> api_key_input: "";
-    in-out property <string> model_id: "openai/gpt-4o-mini";
+    in-out property <string> model_id: "openai/gpt-4o-mini";\n    in-out property <string> available_models: "Save your key and click Load all models.";\n    in-out property <bool> update_available: false;
     in-out property <string> status_text: "SYSTEM READY  /  API NOT CONNECTED";
     in-out property <string> active_page: "workspace";
     in-out property <bool> notifications_enabled: true;
@@ -70,7 +70,7 @@ export component MainWindow inherits Window {
     callback computer_control();
     callback clear_conversation();
     callback toggle_notifications(bool);
-    callback toggle_fullscreen();
+    callback toggle_fullscreen();\n    callback discover_models();\n    callback install_update();
 
     Rectangle {
         background: #08111c;
@@ -141,7 +141,7 @@ export component MainWindow inherits Window {
                             Text { text: "A unified space for connected intelligence"; color: #829bb5; font-size: 11px; }
                         }
                         Rectangle { horizontal-stretch: 1; }
-                        OBButton { label: "⛶  Fullscreen"; compact: true; width: 112px; clicked => { root.toggle_fullscreen(); } }
+                        OBButton { label: "□  Maximize"; compact: true; width: 100px; clicked => { root.toggle_fullscreen(); } }\n                        OBButton { label: "⛶  Fullscreen"; compact: true; width: 105px; clicked => { root.toggle_fullscreen(); } }
                         Rectangle {
                             background: #142b36; border-radius: 20px; border-width: 1px; border-color: #245347; width: 126px; height: 30px;
                             Text { text: "●  PRIVATE SESSION"; color: #6fe0be; font-size: 9px; horizontal-alignment: center; vertical-alignment: center; }
@@ -182,7 +182,7 @@ export component MainWindow inherits Window {
                             }
                             HorizontalLayout {
                                 OBButton { label: "＋  New conversation"; width: 160px; compact: true; clicked => { root.clear_conversation(); } }
-                                OBButton { label: "Check updates"; width: 126px; compact: true; clicked => { root.check_updates(); } }
+                                OBButton { label: "Check updates"; width: 126px; compact: true; clicked => { root.check_updates(); } }\n                                if root.update_available : OBButton { label: "Install update"; width: 126px; compact: true; primary: true; clicked => { root.install_update(); } }
                                 Rectangle { horizontal-stretch: 1; }
                                 Text { text: root.status_text; color: #8ba7c2; font-size: 10px; vertical-alignment: center; }
                             }
@@ -198,12 +198,12 @@ export component MainWindow inherits Window {
                             LineEdit { text <=> root.api_key_input; placeholder-text: "Paste your OpenRouter key (kept in memory only)"; input-type: password; }
                             HorizontalLayout {
                                 OBButton { label: "Save key"; width: 130px; primary: true; clicked => { root.save_key(root.api_key_input); } }
-                                OBButton { label: "Test connection"; width: 150px; clicked => { root.test_connection(); } }
+                                OBButton { label: "Test connection"; width: 150px; clicked => { root.test_connection(); } }\n                                OBButton { label: "Load all models"; width: 150px; clicked => { root.discover_models(); } }
                             }
                             Rectangle { height: 1px; background: #29445d; }
                             Text { text: "MODEL IDS"; color: #83a3c2; font-size: 10px; }
                             LineEdit { text <=> root.model_id; placeholder-text: "provider/model; provider/model"; }
-                            Text { text: "Add up to five model IDs separated by semicolons. Availability depends on the models currently supported by OpenRouter."; color: #9bb0c6; font-size: 11px; wrap: word-wrap; }
+                            Text { text: "Choose model IDs from the full catalogue below. Up to 20 can be queried per message to limit accidental API charges."; color: #9bb0c6; font-size: 11px; wrap: word-wrap; }\n                            ScrollView { height: 220px; content-width: self.visible-width; vertical-scrollbar-policy: always-on; Text { width: parent.width; text: root.available_models; color: #9bb0c6; font-size: 10px; wrap: word-wrap; } }
                             Rectangle { height: 1px; background: #29445d; }
                             HorizontalLayout {
                                 Text { text: "Connection status"; color: #a9bfd5; font-size: 12px; }
@@ -223,7 +223,7 @@ export component MainWindow inherits Window {
                             Text { text: root.model_id; color: #6fe0c4; font-size: 13px; wrap: word-wrap; }
                             OBButton { label: "Configure model IDs"; width: 190px; clicked => { root.active_page = "settings"; } }
                             Rectangle { vertical-stretch: 1; }
-                            Text { text: "Up to five models can be queried in parallel per prompt."; color: #8ba7c2; font-size: 11px; }
+                            Text { text: "The catalogue lists the models exposed by OpenRouter. Some may still reject requests due to provider access, account limits, region, or model availability. Select models in Settings; running many models can cost money."; color: #8ba7c2; font-size: 11px; wrap: word-wrap; }
                         }
                     }
                     if root.active_page == "conversation" : Rectangle {
