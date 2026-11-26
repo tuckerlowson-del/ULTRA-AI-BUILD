@@ -1,0 +1,36 @@
+{
+  "name": "one-brain-desktop",
+  "version": "0.4.0",
+  "private": true,
+  "description": "ONE BRAIN AI workspace and computer operator",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "desktop": "electron .",
+    "start": "concurrently -k \"npm:dev\" \"npm:desktop\"",
+    "build": "vite build",
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:dir": "npm run build && electron-builder --win dir"
+  },
+  "dependencies": {
+    "@nut-tree/nut-js": "^4.2.6",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "vite": "^6.0.5"
+  },
+  "build": {
+    "appId": "com.tuckerlowson.onebrain",
+    "productName": "ONE BRAIN",
+    "directories": { "output": "dist-installer" },
+    "files": ["dist/**/*", "electron/**/*", "package.json", "node_modules/**/*"],
+    "win": { "target": ["nsis"], "artifactName": "ONE-BRAIN-Setup-${version}.${ext}" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true }
+  }
+}
