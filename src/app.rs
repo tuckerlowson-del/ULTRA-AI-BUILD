@@ -1,10 +1,14 @@
 use crate::MainWindow;
 use serde::Deserialize;
 use slint::ComponentHandle;
-use std::sync::{Arc, Mutex};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 
 const UPDATE_ENDPOINT: &str = "https://one-brain-site.pages.dev/api/update";
 const OPENROUTER_ENDPOINT: &str = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_MODELS_ENDPOINT: &str = "https://openrouter.ai/api/v1/models";
 const MAX_PARALLEL_MODELS: usize = 5;
 
 #[derive(Deserialize)]
@@ -25,6 +29,7 @@ struct ResponseMessage {
 pub fn run() {
     let ui = MainWindow::new().expect("could not create ONE BRAIN window");
     let api_key: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let notifications = Arc::new(AtomicBool::new(true));
 
     let key_store = Arc::clone(&api_key);
     let weak_for_save = ui.as_weak();
@@ -32,29 +37,89 @@ pub fn run() {
         let cleaned = value.trim().to_string();
         if cleaned.is_empty() {
             if let Some(window) = weak_for_save.upgrade() {
-                window.set_status_text("Paste an OpenRouter key first.".into());
+                window.set_status_text("Enter an OpenRouter API key first.".into());
             }
             return;
         }
         *key_store.lock().expect("API key lock poisoned") = Some(cleaned);
         if let Some(window) = weak_for_save.upgrade() {
             window.set_api_key_input("".into());
-            window.set_status_text("OpenRouter key saved in memory for this session.".into());
+            window.set_api_connected(false);
+            window.set_status_text("API key saved in memory. Test the connection next.".into());
+        }
+    });
+
+    let key_for_test = Arc::clone(&api_key);
+    let weak_for_test = ui.as_weak();
+    ui.on_test_connection(move || {
+        let key = key_for_test.lock().expect("API key lock poisoned").clone();
+        let Some(key) = key else {
+            if let Some(window) = weak_for_test.upgrade() {
+                window.set_status_text("Save your OpenRouter key before testing the connection.".into());
+            }
+            return;
+        };
+        if let Some(window) = weak_for_test.upgrade() {
+            window.set_status_text("Testing OpenRouter connection…".into());
+        }
+        let weak = weak_for_test.clone();
+        std::thread::spawn(move || {
+            let result = reqwest::blocking::Client::new()
+                .get(OPENROUTER_MODELS_ENDPOINT)
+                .bearer_auth(key)
+                .header("User-Agent", "ONE-BRAIN")
+                .send()
+                .and_then(|response| response.error_for_status())
+                .map(|_| ());
+            let _ = slint::invoke_from_event_loop(move || {
+                if let Some(window) = weak.upgrade() {
+                    match result {
+                        Ok(()) => {
+                            window.set_api_connected(true);
+                            window.set_status_text("OpenRouter connection successful.".into());
+                        }
+                        Err(error) => {
+                            window.set_api_connected(false);
+                            window.set_status_text(format!("Connection failed: {error}").into());
+                        }
+                    }
+                }
+            });
+        });
+    });
+
+    let notification_state = Arc::clone(&notifications);
+    ui.on_toggle_notifications(move |enabled| {
+        notification_state.store(enabled, Ordering::Relaxed);
+    });
+
+    let weak_for_clear = ui.as_weak();
+    ui.on_clear_conversation(move || {
+        if let Some(window) = weak_for_clear.upgrade() {
+            window.set_transcript("New conversation started. Enter a prompt below when you're ready.".into());
+            window.set_prompt("".into());
+            window.set_status_text("New conversation ready.".into());
+            window.set_active_page("workspace".into());
         }
     });
 
     let key_for_chat = Arc::clone(&api_key);
+    let notifications_for_chat = Arc::clone(&notifications);
     let weak_for_chat = ui.as_weak();
     ui.on_send_prompt(move |prompt, model_ids| {
         let prompt = prompt.trim().to_string();
         if prompt.is_empty() {
+            if let Some(window) = weak_for_chat.upgrade() {
+                window.set_status_text("Type a prompt before sending.".into());
+            }
             return;
         }
 
         let key = key_for_chat.lock().expect("API key lock poisoned").clone();
         let Some(key) = key else {
             if let Some(window) = weak_for_chat.upgrade() {
-                window.set_status_text("Add and save your OpenRouter API key before chatting.".into());
+                window.set_status_text("Add and save your OpenRouter API key in Settings before chatting.".into());
+                window.set_active_page("settings".into());
             }
             return;
         };
@@ -69,7 +134,8 @@ pub fn run() {
 
         if models.is_empty() {
             if let Some(window) = weak_for_chat.upgrade() {
-                window.set_status_text("Enter at least one OpenRouter model ID.".into());
+                window.set_status_text("Enter at least one valid provider/model ID in Settings.".into());
+                window.set_active_page("settings".into());
             }
             return;
         }
@@ -84,6 +150,7 @@ pub fn run() {
         window.set_status_text(format!("Running {} model(s) in parallel…", models.len()).into());
 
         let weak = weak_for_chat.clone();
+        let notify = Arc::clone(&notifications_for_chat);
         std::thread::spawn(move || {
             let mut workers = Vec::new();
             for model in models {
@@ -108,14 +175,15 @@ pub fn run() {
                 }
             }
 
+            let should_notify = notify.load(Ordering::Relaxed);
             let _ = slint::invoke_from_event_loop(move || {
                 if let Some(window) = weak.upgrade() {
                     let base = window.get_transcript().to_string();
                     let trimmed = base.trim_end_matches(|c: char| c.is_whitespace());
                     window.set_transcript(format!("{trimmed}{report}").into());
-                    window.set_status_text("All model responses received. Compare their answers above.".into());
+                    window.set_status_text("Model requests finished. Review the responses above.".into());
                     #[cfg(windows)]
-                    {
+                    if should_notify {
                         let _ = notify_rust::Notification::new()
                             .summary("ONE BRAIN")
                             .body("Your model responses are ready.")
@@ -127,8 +195,10 @@ pub fn run() {
     });
 
     let weak_for_update = ui.as_weak();
+    let notifications_for_update = Arc::clone(&notifications);
     ui.on_check_updates(move || {
         let weak = weak_for_update.clone();
+        let notify = Arc::clone(&notifications_for_update);
         std::thread::spawn(move || {
             let result = reqwest::blocking::Client::new()
                 .get(UPDATE_ENDPOINT)
@@ -151,9 +221,9 @@ pub fn run() {
                                 .map(|(latest, current)| latest > current)
                                 .unwrap_or(false);
                             if is_newer {
-                                window.set_status_text(format!("Update available: {latest} — use the download website.").into());
+                                window.set_status_text(format!("Update available: {latest}. Download it from the ONE BRAIN website.").into());
                                 #[cfg(windows)]
-                                {
+                                if notify.load(Ordering::Relaxed) {
                                     let _ = notify_rust::Notification::new()
                                         .summary("ONE BRAIN update available")
                                         .body(&format!("Version {latest} is ready."))
@@ -174,7 +244,7 @@ pub fn run() {
     ui.on_computer_control(move || {
         if let Some(window) = weak_for_control.upgrade() {
             window.set_status_text(
-                "Computer control is locked in this preview. Future actions require explicit permission and confirmation.".into(),
+                "Computer control is disabled in this build. No background actions are running.".into(),
             );
         }
     });
