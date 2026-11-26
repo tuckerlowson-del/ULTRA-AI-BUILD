@@ -390,7 +390,7 @@ pub fn run() {
                     / system.cpus().len().max(1) as f32;
                 let used = system.used_memory() / 1024 / 1024;
                 let total = system.total_memory() / 1024 / 1024;
-                let os = System::long_os_version().unwrap_or_else(|| "Windows".to_string());
+                let os = System::os_version().unwrap_or_else(|| "Windows".to_string());
                 format!("{} | CPU {:.0}% | RAM {} / {} MB | {} logical CPUs", os, cpu, used, total, system.cpus().len())
             };
             #[cfg(not(windows))]
