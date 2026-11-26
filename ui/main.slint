@@ -1,4 +1,4 @@
-import { LineEdit } from "std-widgets.slint";
+import { LineEdit, ScrollView } from "std-widgets.slint";
 
 component BrandMark inherits Rectangle {
     width: 42px;
@@ -70,6 +70,7 @@ export component MainWindow inherits Window {
     callback computer_control();
     callback clear_conversation();
     callback toggle_notifications(bool);
+    callback toggle_fullscreen();
 
     Rectangle {
         background: #08111c;
@@ -140,6 +141,7 @@ export component MainWindow inherits Window {
                             Text { text: "A unified space for connected intelligence"; color: #829bb5; font-size: 11px; }
                         }
                         Rectangle { horizontal-stretch: 1; }
+                        OBButton { label: "⛶  Fullscreen"; compact: true; width: 112px; clicked => { root.toggle_fullscreen(); } }
                         Rectangle {
                             background: #142b36; border-radius: 20px; border-width: 1px; border-color: #245347; width: 126px; height: 30px;
                             Text { text: "●  PRIVATE SESSION"; color: #6fe0be; font-size: 9px; horizontal-alignment: center; vertical-alignment: center; }
@@ -159,7 +161,12 @@ export component MainWindow inherits Window {
                                         Rectangle { horizontal-stretch: 1; }
                                         Text { text: "MULTI-MODEL MODE"; color: #62d4bf; font-size: 9px; }
                                     }
-                                    Text { text: root.transcript; color: #e0ebf7; font-size: 13px; wrap: word-wrap; vertical-stretch: 1; }
+                                    ScrollView {
+                                        vertical-stretch: 1;
+                                        content-width: self.visible-width;
+                                        vertical-scrollbar-policy: always-on;
+                                        Text { width: parent.width; text: root.transcript; color: #e0ebf7; font-size: 13px; wrap: word-wrap; }
+                                    }
                                 }
                             }
                             Rectangle {
@@ -224,7 +231,12 @@ export component MainWindow inherits Window {
                         VerticalLayout {
                             padding: 22px; spacing: 12px;
                             Text { text: "CURRENT SESSION"; color: #f0f6ff; font-size: 17px; font-weight: 700; }
-                            Text { text: root.transcript; color: #dbe8f5; font-size: 12px; wrap: word-wrap; vertical-stretch: 1; }
+                            ScrollView {
+                                height: 520px;
+                                content-width: self.visible-width;
+                                vertical-scrollbar-policy: always-on;
+                                Text { width: parent.width; text: root.transcript; color: #dbe8f5; font-size: 12px; wrap: word-wrap; }
+                            }
                             OBButton { label: "Clear conversation"; width: 170px; clicked => { root.clear_conversation(); } }
                         }
                     }
