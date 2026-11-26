@@ -2,6 +2,12 @@
 
 ONE BRAIN is a private AI workspace and desktop operator.
 
+## Downloads
+
+Download the latest successful Windows installer (EXE) and Android test APK from the repository's [GitHub Releases](https://github.com/tuckerlowson-del/ULTRA-AI-BUILD/releases). Each successful build on `main` publishes both files together as a development release. Version tags publish a non-development release.
+
+The Android APK is currently a debug/testing build, not a Play Store-signed production release.
+
 ## Development builds
 
 The desktop shows **DEV BUILD #N**, where N is the monotonically increasing GitHub Actions workflow run number. Local development displays `DEV BUILD #LOCAL`. These are development build identifiers, not release-version claims.
