@@ -49,7 +49,7 @@ jobs:
       - name: Build React app
         env:
           VITE_BUILD_NUMBER: ${{ github.run_number }}
-          VITE_APP_VERSION: ${{ steps.appversion.outputs.version }}
+          VITE_APP_VERSION: 0.6.1.${{ github.run_number }}
         run: npm run build
       - name: Generate Android project
         run: npx cap add android
