@@ -273,12 +273,12 @@ ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
   running = true; stopRequested = false;
   const chosenModel = model || "openai/gpt-4o";
   const messages = [
-    { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshots, accurately mapped mouse clicks, keyboard typing/keys, approved built-in app launching, running-app listing, workspace file listing/reading/folder opening, website opening, and read-only diagnostics. Inspect a fresh screenshot before clicking, use screenshot pixel coordinates, verify every action with another screenshot, and report clearly. Execute routine requested actions directly without asking for repeated confirmation. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Destructive or security-sensitive actions are unavailable. The selected workspace is the only file area you may inspect. Stop when asked." },
+    { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshots, accurately mapped mouse clicks, keyboard typing/keys, approved built-in app launching, running-app listing, workspace file listing/reading/folder opening, website opening, and read-only diagnostics. When the user's instruction is clear, execute it directly without asking a follow-up question or requesting approval for routine desktop actions. You may click, type, press permitted keys, open approved apps and URLs, and inspect the selected workspace whenever needed to complete the requested task. For multi-step tasks, plan briefly, carry out the steps in order, and verify results. Inspect a fresh screenshot before each click, use screenshot pixel coordinates, and verify important actions with another screenshot. Ask a question only if a genuinely essential detail is missing and guessing would cause a meaningful mistake. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Destructive or security-sensitive actions are unavailable. The selected workspace is the only file area you may inspect. Stop when asked." },
     { role: "user", content: String(task).slice(0, 6000) }
   ];
   try {
     emit("status", "Agent planning task…", { model: chosenModel });
-    for (let step = 0; step < 10; step++) {
+    for (let step = 0; step < 20; step++) {
       if (stopRequested) { emit("status", "Agent stopped."); break; }
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json", "HTTP-Referer": "https://one-brain-updater.tuckerlowson.workers.dev", "X-Title": "ONE BRAIN" },
@@ -309,7 +309,7 @@ ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
         }
         emit("tool_result", call.function.name + " finished", { result: safeResult });
       }
-      if (step === 9) emit("final", "Stopped after the 10-step safety limit. Review the activity log and continue with a more specific task if needed.");
+      if (step === 19) emit("final", "Stopped after the 20-step execution limit. Review the activity log and continue with a more specific task if needed.");
     }
   } catch (error) {
     emit("error", error.message || String(error));
