@@ -170,6 +170,7 @@ const toolSpecs = [
   { type: "function", function: { name: "list_workspace", description: "List files and folders in the selected workspace or a relative subfolder.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } },
   { type: "function", function: { name: "read_text_file", description: "Read a small text file inside the selected workspace.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false } } },
   { type: "function", function: { name: "run_safe_command", description: "Run a read-only diagnostic command from the permitted list. Requires approval.", parameters: { type: "object", properties: { command: { type: "string", enum: ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"] } }, required: ["command"], additionalProperties: false } } },
+  { type: "function", function: { name: "get_system_overview", description: "Read basic PC hardware, memory, uptime and local network summary.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "list_running_apps", description: "List running Windows applications and processes (read-only).", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "launch_approved_app", description: "Launch an approved built-in Windows app. Requires user approval.", parameters: { type: "object", properties: { app: { type: "string", enum: ["notepad","calculator","file_explorer","task_manager","paint","settings"] } }, required: ["app"], additionalProperties: false } } },
   { type: "function", function: { name: "open_workspace_folder", description: "Open the selected workspace or a subfolder in File Explorer. Requires user approval.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } }
@@ -199,6 +200,11 @@ async function executeTool(name, args) {
     const stat = await fs.stat(target);
     if (!stat.isFile() || stat.size > 200000) throw new Error("Only text files up to 200 KB can be read.");
     return (await fs.readFile(target, "utf8")).slice(0, 200000);
+  }
+  if (name === "get_system_overview") {
+    const cpus = os.cpus() || [];
+    const network = Object.values(os.networkInterfaces()).flat().filter(item => item && item.family === "IPv4" && !item.internal).map(item => ({ address: item.address, netmask: item.netmask }));
+    return { computer: os.hostname(), operatingSystem: os.type() + " " + os.release(), architecture: os.arch(), processor: cpus[0]?.model || "Unknown", logicalCores: cpus.length, memoryTotalMB: Math.round(os.totalmem() / 1048576), memoryFreeMB: Math.round(os.freemem() / 1048576), uptimeMinutes: Math.round(os.uptime() / 60), network };
   }
   if (name === "list_running_apps") {
     const result = await execFileAsync("tasklist.exe", ["/FO", "CSV", "/NH"], { windowsHide: true, timeout: 10000, maxBuffer: 50000 });
