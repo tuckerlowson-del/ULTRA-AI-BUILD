@@ -158,7 +158,12 @@ ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
         try { result = await executeTool(call.function.name, args); }
         catch (error) { result = { error: error.message || String(error) }; }
         messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result).slice(0, 16000) });
-        emit("tool_result", call.function.name + " finished", { result: typeof result === "string" ? result.slice(0, 500) : result });
+        const safeResult = call.function.name === "computer_screenshot" && result && result.image ? { ok: true, width: result.width, height: result.height, previewSentToUI: true } : result;
+        messages[messages.length - 1].content = JSON.stringify(safeResult).slice(0, 16000);
+        if (call.function.name === "computer_screenshot" && result && result.image) {
+          messages.push({ role: "user", content: [{ type: "text", text: "Current desktop screenshot for visual inspection." }, { type: "image_url", image_url: { url: result.image } }] });
+        }
+        emit("tool_result", call.function.name + " finished", { result: safeResult });
       }
       if (step === 9) emit("final", "Stopped after the 10-step safety limit. Review the activity log and continue with a more specific task if needed.");
     }
