@@ -1,4 +1,4 @@
-name: ONE BRAIN desktop builds
+name: ONE BRAIN development builds
 
 on:
   push:
