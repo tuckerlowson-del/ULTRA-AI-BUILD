@@ -39,6 +39,8 @@ struct ResponseMessage {
 
 pub fn run() {
     let ui = MainWindow::new().expect("could not create ONE BRAIN window");
+    // Start as a proper desktop workspace instead of a small floating window.
+    ui.window().set_maximized(true);
     let api_key: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
     let notifications = Arc::new(AtomicBool::new(true));
     let computer_permission = Arc::new(AtomicBool::new(false));
