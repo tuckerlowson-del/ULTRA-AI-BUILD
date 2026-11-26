@@ -67,3 +67,10 @@
 .startup-status{font:9px 'DM Mono';letter-spacing:2px;color:#7fa2c2;margin-top:16px}
 .startup-countdown{font:28px 'DM Mono';font-weight:500;color:#e7f5ff;margin-top:8px}
 @keyframes splash-progress{from{width:0}to{width:100%}}@keyframes splash-in{from{opacity:0}to{opacity:1}}
+
+.mdt-login{width:min(100%,420px);margin:7vh auto 0;padding:25px;text-align:center}
+.mdt-login .panel-head{text-align:left}
+.mdt-login-mark{width:62px;height:62px;border-radius:18px;margin:12px auto;background:#18384a;color:#65ddc9;display:grid;place-items:center}
+.mdt-login h2{font-size:20px;margin:8px 0}.mdt-login p{font-size:11px;line-height:1.6;color:#819bb4;margin:0 0 14px}
+.mdt-login label{text-align:left}.mdt-login input{width:100%;background:#0b1624;border:1px solid #2a4056;border-radius:7px;padding:11px;color:#e8f2fd;margin-bottom:12px}
+.mdt-login .run-btn{width:100%;margin:0}.mdt-login-hint{display:block;color:#6886a1;font-size:9px;margin-top:12px}.mdt-login-error{display:block;color:#ff879b;font-size:10px;margin:0 0 10px}

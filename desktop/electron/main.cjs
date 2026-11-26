@@ -7,6 +7,9 @@ const { promisify } = require("node:util");
 const os = require("node:os");
 const execFileAsync = promisify(execFile);
 let mainWindow;
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) app.quit();
+else app.on("second-instance", () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
 let workspace = app.getPath("documents");
 let stopRequested = false;
 let running = false;
@@ -42,6 +45,7 @@ function createWindow() {
   else mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
 }
 app.whenReady().then(() => {
+  if (!hasSingleInstanceLock) return;
   createWindow();
   configureAutoUpdates();
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
