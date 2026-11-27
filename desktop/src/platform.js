@@ -100,6 +100,7 @@ if (!window.onebrain) {
       }
       return result;
     },
+    async localAIChat() { throw new Error("On-device Ollama integration is available in the Windows desktop edition. Android local-model support is not included yet."); },
     async getWorkspace() { return workspace; },
     async chooseWorkspace() {
       emit({ type: "status", message: "Folder selection is not available in the Android edition." });
@@ -121,9 +122,9 @@ if (!window.onebrain) {
       emit({ type: "status", message: "Request stopped." });
     },
     async runAgent(task, apiKey, model, endpoint) {
-      if (!apiKey || !apiKey.trim()) throw new Error("Add your OpenRouter API key in Settings first.");
+      if (!apiKey || !apiKey.trim()) throw new Error("Add your provider API key in Settings first.");
       activeController = new AbortController();
-      emit({ type: "status", message: "Connecting to OpenRouter…" });
+      emit({ type: "status", message: "Connecting to your AI provider…" });
       try {
         const response = await fetch((String(endpoint||"https://openrouter.ai/api/v1").replace(/\/+$/,"").endsWith("/chat/completions")?String(endpoint).replace(/\/+$/,""):String(endpoint||"https://openrouter.ai/api/v1").replace(/\/+$/,"")+"/chat/completions"), {
           method: "POST", signal: activeController.signal,
