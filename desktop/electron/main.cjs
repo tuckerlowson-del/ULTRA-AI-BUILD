@@ -96,19 +96,25 @@ ipcMain.handle("app-data:save", async (_event, payload = {}) => {
   return { saved: true, savedAt: new Date().toISOString(), bytes: Buffer.byteLength(serialized, "utf8") };
 });
 ipcMain.handle("models:list", async (_event, { endpoint, key } = {}) => {
-  const base = String(endpoint || "https://openrouter.ai/api/v1").trim().replace(/\/+$/, "");
+  const base = String(endpoint || "https://openrouter.ai/api/v1").trim().replace(/\\/+$/, "");
   const parsed = new URL(base);
   if (parsed.protocol !== "https:" || parsed.username || parsed.password) throw new Error("Model catalogue requires a secure HTTPS provider endpoint.");
   const target = base + (base.endsWith("/models") ? "" : "/models");
   const cacheKey = target + "|" + (String(key || "").length ? "authenticated" : "public");
   if (modelCatalogCache.key === cacheKey && Date.now() - modelCatalogCache.at < 5 * 60 * 1000) return { source: target, models: modelCatalogCache.data, cached: true };
   const headers = { "Accept": "application/json" };
-  if (key) headers.Authorization = /^Bearer\s/i.test(String(key).trim()) ? String(key).trim() : "Bearer " + String(key).trim();
-  const response = await fetch(target, { headers, signal: AbortSignal.timeout(20000) });
-  if (!response.ok) throw new Error("Model catalogue returned HTTP " + response.status + ". " + (await response.text()).slice(0, 300));
-  const payload = await response.json();
-  const list = Array.isArray(payload.data) ? payload.data : Array.isArray(payload.models) ? payload.models : [];
-  if (!list.length) throw new Error("The provider did not return a model list.");
+  if (key) headers.Authorization = /^Bearer\\s/i.test(String(key).trim()) ? String(key).trim() : "Bearer " + String(key).trim();
+  let nextUrl = target;
+  const list = [];
+  for (let page = 0; nextUrl && page < 20; page++) {
+    const response = await fetch(nextUrl, { headers, signal: AbortSignal.timeout(20000) });
+    if (!response.ok) throw new Error("Model catalogue returned HTTP " + response.status + ". " + (await response.text()).slice(0, 300));
+    const payload = await response.json();
+    const batch = Array.isArray(payload.data) ? payload.data : Array.isArray(payload.models) ? payload.models : [];
+    list.push(...batch);
+    const next = payload.links && payload.links.next;
+    nextUrl = next ? new URL(next, target).href : null;
+  }
   const models = list.map(item => ({
     id: String(item.id || item.name || ""),
     name: String(item.name || item.id || ""),
@@ -119,6 +125,8 @@ ipcMain.handle("models:list", async (_event, { endpoint, key } = {}) => {
     supported_parameters: Array.isArray(item.supported_parameters) ? item.supported_parameters : [],
     created: Number(item.created || 0) || null
   })).filter(item => item.id);
+  if (parsed.hostname === "openrouter.ai" && !models.some(item => item.id === "openrouter/free")) models.unshift({ id: "openrouter/free", name: "OpenRouter Free Models Router", description: "Automatically routes requests to an available free model.", pricing: { prompt: "0", completion: "0" }, context_length: 200000, supported_parameters: ["tools", "vision"] });
+  if (!models.length) throw new Error("The provider did not return a model list.");
   modelCatalogCache = { key: cacheKey, at: Date.now(), data: models };
   return { source: target, models, cached: false };
 });
