@@ -227,6 +227,22 @@ async function executeTool(name, args) {
   }
   throw new Error("Unknown tool: " + name);
 }
+ipcMain.handle("local-ai:chat", async (_event, { messages, model }) => {
+  const chosenModel = String(model || "qwen2.5:0.5b").trim();
+  if (!chosenModel) throw new Error("Enter an installed Ollama model name in Settings.");
+  try {
+    const response = await fetch("http://127.0.0.1:11434/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: chosenModel, messages: (Array.isArray(messages) ? messages : []).map(item => ({ role: item.role === "assistant" ? "assistant" : "user", content: String(item.content || "") })), stream: false }), signal: AbortSignal.timeout(120000) });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data?.error || "Ollama returned HTTP " + response.status);
+    const answer = data?.message?.content;
+    if (!answer) throw new Error("The local model returned an empty response.");
+    return String(answer);
+  } catch (error) {
+    if (error.name === "TimeoutError") throw new Error("The local model took too long to respond. Try a smaller model.");
+    if (/fetch failed|ECONNREFUSED|connect/i.test(error.message || "")) throw new Error("Ollama is not running at 127.0.0.1:11434. Install Ollama, download a small model once, then try again.");
+    throw error;
+  }
+});
 ipcMain.handle("screen:capture", async () => captureScreen(false));
 ipcMain.handle("agent:run", async (_event, { task, key, model, endpoint }) => {
   if (running) throw new Error("An agent task is already running.");
