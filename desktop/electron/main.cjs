@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell, safeStorage, screen, Notification } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell, safeStorage, screen, Notification, clipboard } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const fs = require("node:fs/promises");
@@ -74,6 +74,14 @@ ipcMain.handle("notifications:show", (_event, payload = {}) => {
   return { ok: true };
 });
 
+ipcMain.handle("clipboard:write", (_event, value) => { clipboard.writeText(String(value || "")); return { copied: true }; });
+ipcMain.handle("chat:export", async (_event, { title, markdown } = {}) => {
+  const safeTitle = String(title || "ONE BRAIN chat").replace(/[<>:"/\\\\|?*]/g, "-").slice(0, 80);
+  const result = await dialog.showSaveDialog(mainWindow, { title: "Export ONE BRAIN conversation", defaultPath: safeTitle + ".md", filters: [{ name: "Markdown", extensions: ["md"] }, { name: "Text", extensions: ["txt"] }] });
+  if (result.canceled || !result.filePath) return { cancelled: true };
+  await fs.writeFile(result.filePath, String(markdown || ""), "utf8");
+  return { saved: true, filePath: result.filePath };
+});
 ipcMain.handle("app-data:load", async () => {
   try {
     const raw = await fs.readFile(appDataFile, "utf8");
