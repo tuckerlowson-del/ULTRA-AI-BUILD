@@ -231,7 +231,7 @@ ipcMain.handle("local-ai:chat", async (_event, { messages, model }) => {
   const chosenModel = String(model || "qwen2.5:0.5b").trim();
   if (!chosenModel) throw new Error("Enter an installed Ollama model name in Settings.");
   try {
-    const response = await fetch("http://127.0.0.1:11434/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: chosenModel, messages: (Array.isArray(messages) ? messages : []).map(item => ({ role: item.role === "assistant" ? "assistant" : "user", content: String(item.content || "") })), stream: false }), signal: AbortSignal.timeout(120000) });
+    const response = await fetch("http://127.0.0.1:11434/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: chosenModel, messages: [{ role: "system", content: "You are ONE BRAIN Local AI. You run entirely on this computer with no internet. Answer clearly and honestly. If you do not know, say so. Do not claim to have used online sources or controlled the PC." }, ...(Array.isArray(messages) ? messages : []).map(item => ({ role: item.role === "assistant" ? "assistant" : "user", content: String(item.content || "") }))], stream: false }), signal: AbortSignal.timeout(120000) });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data?.error || "Ollama returned HTTP " + response.status);
     const answer = data?.message?.content;
