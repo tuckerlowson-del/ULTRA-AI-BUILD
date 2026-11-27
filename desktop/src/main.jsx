@@ -81,7 +81,7 @@ function App() {
         <div className="chat-toolbar"><span><span className="footer-led"/> {apiKey.trim()?"MODEL ROUTE":"LOCAL ASSIST · OFFLINE"}</span><code>{model || "Select a model in Settings"}</code><button className="outline-btn" onClick={()=>setShowSettings(true)}><KeyRound size={14}/> API settings</button></div>
         <div className="chat-transcript">{chatMessages.length===0?<div className="empty"><Sparkles size={24}/><b>Your research workspace is ready</b><span>Start a conversation. Your messages stay in this session.</span></div>:chatMessages.map((msg,i)=><div className={"chat-bubble "+msg.role} key={i}><small>{msg.role==="user"?"YOU":"ONE BRAIN"}</small><p>{msg.content}</p></div>)}
         {chatBusy&&<div className="chat-thinking"><span className="pulse"/> Thinking…</div>}</div>
-        <form className="chat-compose" onSubmit={async e=>{e.preventDefault();const prompt=chatDraft.trim();if(!prompt||chatBusy)return;if(!apiKey.trim()){const history=[...chatMessages,{role:"user",content:prompt}];setChatMessages(history);setChatDraft("");setChatBusy(true);try{const answer=await localReply(prompt);setChatMessages(old=>[...old,{role:"assistant",content:answer}]);}catch(err){setChatMessages(old=>[...old,{role:"assistant",content:"Local AI unavailable: "+err.message+" Configure a local Ollama model, or add a cloud API key."}]);}finally{setChatBusy(false);}return;}const history=[...chatMessages,{role:"user",content:prompt}];setChatMessages(history);setChatDraft("");setChatBusy(true);try{const response=await fetch((apiEndpoint.trim().replace(/\/+$/,"").endsWith("/chat/completions")?apiEndpoint.trim().replace(/\/+$/,""):apiEndpoint.trim().replace(/\/+$/,"")+"/chat/completions"),{method:"POST",headers:{"Authorization":/^Bearer\s/i.test(apiKey.trim())?apiKey.trim():"Bearer "+apiKey.trim(),"Content-Type":"application/json","HTTP-Referer":"https://github.com/tuckerlowson-del/ULTRA-AI-BUILD","X-Title":"ONE BRAIN"},body:JSON.stringify({model:model.trim()||"openai/gpt-4o",messages:[{role:"system",content:"You are ONE BRAIN's AI Chat & Research assistant. Be accurate, distinguish verified facts from uncertainty, and never claim to have browsed or taken actions unless tools actually did so."},...history.map(x=>({role:x.role,content:x.content}))]})});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data?.error?.message||"Request failed ("+response.status+")");const answer=data?.choices?.[0]?.message?.content;if(!answer)throw new Error("The model returned an empty response.");setChatMessages(old=>[...old,{role:"assistant",content:Array.isArray(answer)?answer.map(x=>x.text||"").join("\n"):String(answer)}]);}catch(err){setChatMessages(old=>[...old,{role:"assistant",content:"Request error: "+err.message}]);}finally{setChatBusy(false);}}}>
+        <form className="chat-compose" onSubmit={async e=>{e.preventDefault();const prompt=chatDraft.trim();if(!prompt||chatBusy)return;if(!apiKey.trim()){const history=[...chatMessages,{role:"user",content:prompt}];setChatMessages(history);setChatDraft("");setChatBusy(true);try{const answer=await localReply(prompt);setChatMessages(old=>[...old,{role:"assistant",content:answer}]);}catch(err){setChatMessages(old=>[...old,{role:"assistant",content:"Local AI unavailable: "+err.message+" Configure a local Ollama model, or add a cloud API key."}]);}finally{setChatBusy(false);}return;}const history=[...chatMessages,{role:"user",content:prompt}];setChatMessages(history);setChatDraft("");setChatBusy(true);try{const data=await requestChatCompletion({apiEndpoint,apiKey,model,messages:[{role:"system",content:"You are ONE BRAIN's AI Chat & Research assistant. Be accurate, distinguish verified facts from uncertainty, and never claim to have browsed or taken actions unless tools actually did so."},...history.map(x=>({role:x.role,content:x.content}))]});const answer=data?.choices?.[0]?.message?.content;if(!answer)throw new Error("The model returned an empty response.");setChatMessages(old=>[...old,{role:"assistant",content:Array.isArray(answer)?answer.map(x=>x.text||"").join("\n"):String(answer)}]);}catch(err){setChatMessages(old=>[...old,{role:"assistant",content:"Request error: "+err.message}]);}finally{setChatBusy(false);}}}>
           <textarea value={chatDraft} onChange={e=>setChatDraft(e.target.value)} placeholder="Ask ONE BRAIN anything…" rows="2"/>
           <button className="run-btn" disabled={chatBusy||!chatDraft.trim()}><Send size={15}/> Send</button>
         </form>
@@ -99,5 +99,36 @@ function App() {
     {splash&&<div className="startup-screen"><div className="startup-content"><div className="ford-logo-oval">Ford</div><div className="startup-title">ONE BRAIN</div><div className="startup-subtitle">FORD INTELLIGENCE SYSTEM</div><div className="startup-loader"><span/></div><div className="startup-status">INITIALIZING SYSTEM</div><div className="startup-countdown">{splashCount}</div></div></div>}
   </div>;
 }
+async function requestChatCompletion({apiEndpoint,apiKey,model,messages}) {
+  const base=apiEndpoint.trim().replace(/\\/+$/,"");
+  const url=base.endsWith("/chat/completions")?base:base+"/chat/completions";
+  const headers={"Authorization":/^Bearer\\s/i.test(apiKey.trim())?apiKey.trim():"Bearer "+apiKey.trim(),"Content-Type":"application/json","HTTP-Referer":"https://github.com/tuckerlowson-del/ULTRA-AI-BUILD","X-Title":"ONE BRAIN"};
+  const body=JSON.stringify({model:model.trim()||"openai/gpt-4o",messages});
+  const retryable=new Set([408,429,500,502,503,504]);
+  for(let attempt=0;attempt<4;attempt++){
+    let response;
+    try{
+      response=await fetch(url,{method:"POST",headers,body});
+    }catch(error){
+      if(attempt===3)throw new Error("Network request failed after 4 attempts: "+(error?.message||"connection error"));
+      await new Promise(resolve=>setTimeout(resolve,Math.min(8000,1000*Math.pow(2,attempt))+Math.floor(Math.random()*300)));
+      continue;
+    }
+    const raw=await response.text();
+    let data={};
+    try{data=raw?JSON.parse(raw):{};}catch{data={};}
+    if(response.ok)return data;
+    const detail=data?.error?.message||data?.message||raw.slice(0,1200)||response.statusText||"No error details returned by provider.";
+    if(!retryable.has(response.status)||attempt===3){
+      throw new Error("HTTP "+response.status+" "+(response.statusText||"Request failed")+": "+detail);
+    }
+    const retryAfter=response.headers.get("Retry-After");
+    const retrySeconds=retryAfter&&Number.isFinite(Number(retryAfter))?Number(retryAfter):0;
+    const delay=retrySeconds>0?Math.min(10000,retrySeconds*1000):Math.min(8000,1000*Math.pow(2,attempt));
+    await new Promise(resolve=>setTimeout(resolve,delay+Math.floor(Math.random()*300)));
+  }
+  throw new Error("Request failed after retrying.");
+}
+
 function Event({event:e}){const icon=e.type==="error"?<XCircle size={16}/>:e.type==="final"?<CheckCircle2 size={16}/>:e.type==="tool"?<SquareTerminal size={16}/>:e.type==="tool_result"?<CheckCircle2 size={16}/>:e.type==="user"?<Bot size={16}/>:<Activity size={16}/>;return <div className={"event "+(e.type||"")}><div className="event-icon">{icon}</div><div className="event-body"><b>{e.message}</b>{e.tool&&<small>{e.tool}</small>}{e.result&&typeof e.result==="string"&&<small>{e.result}</small>}</div><time>{e.at?new Date(e.at).toLocaleTimeString(): ""}</time></div>}
 createRoot(document.getElementById("root")).render(<App/>);
