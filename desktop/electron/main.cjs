@@ -317,14 +317,14 @@ async function computerAction(kind, args) {
     return { ok: true, key: String(args.key).toUpperCase() };
   }
 }
-function isSensitiveName(name){return /(^|[._ -])(passwords?|credentials?|secrets?|tokens?|private[-_ ]?keys?|wallet|cookies?|login[-_ ]?data)([._ -]|$)/i.test(String(name||""));}
+function isSensitiveName(name){const value=String(name||"");return /(^|[._ -])(passwords?|credentials?|secrets?|tokens?|private[-_ ]?keys?|wallet|cookies?|login[-_ ]?data)([._ -]|$)/i.test(value)||/^\.env($|\.)/i.test(value)||/^id_(rsa|ed25519|ecdsa)$/i.test(value)||/\.(pem|p12|pfx|key)$/i.test(value);}
 function resolvePcPath(input){
   const raw=String(input||"").trim();
   if(!raw||raw.startsWith("\\\\")||raw.startsWith("//"))throw new Error("Use an absolute local-drive path; network shares are not accessible.");
   const target=path.resolve(raw);
   if(!/^[A-Za-z]:\\/.test(target))throw new Error("Only absolute local-drive paths are supported.");
   const lower=target.toLowerCase().replace(/\\+$/,"");
-  const protectedRoots=["c:\\windows","c:\\program files","c:\\program files (x86)","c:\\programdata","c:\\$recycle.bin","c:\\system volume information"];
+  const protectedRoots=["windows","program files","program files (x86)","programdata","$recycle.bin","system volume information"].map(name=>target.slice(0,3)+name);
   if(protectedRoots.some(root=>lower===root||lower.startsWith(root+"\\")))throw new Error("Protected Windows and application directories are excluded.");
   return target;
 }
