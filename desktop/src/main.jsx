@@ -100,9 +100,9 @@ function App() {
   </div>;
 }
 async function requestChatCompletion({apiEndpoint,apiKey,model,messages}) {
-  const base=apiEndpoint.trim().replace(/\\/+$/,"");
+  const base=apiEndpoint.trim().replace(/\/+$/,"");
   const url=base.endsWith("/chat/completions")?base:base+"/chat/completions";
-  const headers={"Authorization":/^Bearer\\s/i.test(apiKey.trim())?apiKey.trim():"Bearer "+apiKey.trim(),"Content-Type":"application/json","HTTP-Referer":"https://github.com/tuckerlowson-del/ULTRA-AI-BUILD","X-Title":"ONE BRAIN"};
+  const headers={"Authorization":/^Bearer\s/i.test(apiKey.trim())?apiKey.trim():"Bearer "+apiKey.trim(),"Content-Type":"application/json","HTTP-Referer":"https://github.com/tuckerlowson-del/ULTRA-AI-BUILD","X-Title":"ONE BRAIN"};
   const body=JSON.stringify({model:model.trim()||"openai/gpt-4o",messages});
   const retryable=new Set([408,429,500,502,503,504]);
   for(let attempt=0;attempt<4;attempt++){
