@@ -11,7 +11,8 @@
     "build": "vite build",
     "dist:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-icon.ps1 && npm run build && electron-builder --win nsis --publish always",
     "dist:dir": "npm run build && electron-builder --win dir",
-    "android:sync": "cap sync android"
+    "android:sync": "cap sync android",
+    "dist:mac": "npm run build && electron-builder --mac dmg zip --publish never"
   },
   "dependencies": {
     "@nut-tree-fork/nut-js": "^4.2.6",
@@ -63,6 +64,43 @@
         "repo": "ULTRA-AI-BUILD",
         "releaseType": "release"
       }
-    ]
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "ONE-BRAIN-${version}-${arch}.${ext}",
+      "identity": null,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "sign": false,
+      "contents": [
+        {
+          "x": 130,
+          "y": 170
+        },
+        {
+          "x": 410,
+          "y": 170,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   }
 }
