@@ -19,7 +19,7 @@ contextBridge.exposeInMainWorld("onebrain", {
   stopAgent: () => ipcRenderer.send("agent:stop"),
   chooseWorkspace: () => ipcRenderer.invoke("workspace:choose"),
   getWorkspace: () => ipcRenderer.invoke("workspace:get"),
-  getNetworkDevices: () => ipcRenderer.invoke("mdt:network"),
+  getNetworkDevices: () => ipcRenderer.invoke("mdt:network"),\n  getCsiDiagnostics: () => ipcRenderer.invoke("csi:diagnostics"),
   getSystemOverview: () => ipcRenderer.invoke("system:overview"),
   onAgentEvent: (callback) => {
     const handler = (_event, payload) => callback(payload);
