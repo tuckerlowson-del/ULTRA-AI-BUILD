@@ -181,7 +181,47 @@ ipcMain.handle("workspace:choose", async () => {
 ipcMain.on("agent:stop", () => { stopRequested = true; emit("status", "Stop requested. Finishing the current safe operation…"); });
 let mdtCache = null;
 let mdtCacheAt = 0;
-ipcMain.handle("csi:diagnostics", async () => {\n  const checkedAt = new Date().toISOString();\n  if (process.platform !== "win32") return { available: false, rawCsiAvailable: false, status: "unsupported-platform", message: "This build currently checks Windows wireless diagnostics only. No CSI capture backend is configured.", wifiAdapters: [], checkedAt };\n  let driverText = "";\n  try { const result = await execFileAsync("netsh.exe", ["wlan", "show", "drivers"], { windowsHide: true, timeout: 5000, maxBuffer: 20000 }); driverText = result.stdout || ""; } catch (error) { driverText = error.stdout || ""; }\n  let interfaceText = "";\n  try { const result = await execFileAsync("netsh.exe", ["wlan", "show", "interfaces"], { windowsHide: true, timeout: 4000, maxBuffer: 12000 }); interfaceText = result.stdout || ""; } catch (error) { interfaceText = error.stdout || ""; }\n  const adapters = [];\n  const blocks = driverText.split(/(?=\\r?\\n?\\s*Interface name\\s*:)/i).filter(block => /Interface name\\s*:/i.test(block));\n  for (const block of blocks) { const get = label => (block.match(new RegExp(label + "\\\\s*:\\\\s*(.+)", "i")) || [])[1]?.trim() || ""; adapters.push({ name: get("Interface name") || "Wireless adapter", description: get("Driver") || get("Vendor") || "Windows WLAN driver", driver: get("Driver version") || "Not reported", radio: get("Radio types supported") || "Unknown" }); }\n  const connected = (interfaceText.match(/\\bSSID\\s*:\\s*(.+)/i) || [])[1]?.trim() || null;\n  return { available: true, rawCsiAvailable: false, status: "no-csi-backend", message: "Windows reports ordinary WLAN adapter information, but no raw Channel State Information capture interface or compatible CSI backend is installed. Movement and presence sensing remain disabled.", wifiAdapters: adapters, connectedSsid: connected, checkedAt, limitations: ["netsh reports connection and driver details, not per-subcarrier CSI samples", "Signal percentage cannot be used as a substitute for CSI", "A compatible adapter, driver and capture backend must be verified before enabling sensing"] };\n});\nipcMain.handle("system:overview", () => { const cpus=os.cpus()||[]; const network=Object.values(os.networkInterfaces()).flat().filter(item=>item&&item.family==="IPv4"&&!item.internal).map(item=>({address:item.address,netmask:item.netmask})); return {computer:os.hostname(),operatingSystem:os.type()+" "+os.release(),architecture:os.arch(),processor:cpus[0]?.model||"Unknown",logicalCores:cpus.length,memoryTotalMB:Math.round(os.totalmem()/1048576),memoryFreeMB:Math.round(os.freemem()/1048576),uptimeMinutes:Math.round(os.uptime()/60),network}; });
+ipcMain.handle("csi:diagnostics", async () => {
+  const checkedAt = new Date().toISOString();
+  if (process.platform !== "win32") return { available: false, rawCsiAvailable: false, status: "unsupported-platform", message: "This build currently checks Windows wireless diagnostics only. No CSI capture backend is configured.", wifiAdapters: [], checkedAt };
+  let driverText = "";
+  try {
+    const result = await execFileAsync("netsh.exe", ["wlan", "show", "drivers"], { windowsHide: true, timeout: 5000, maxBuffer: 20000 });
+    driverText = result.stdout || "";
+  } catch (error) { driverText = error.stdout || ""; }
+  let interfaceText = "";
+  try {
+    const result = await execFileAsync("netsh.exe", ["wlan", "show", "interfaces"], { windowsHide: true, timeout: 4000, maxBuffer: 12000 });
+    interfaceText = result.stdout || "";
+  } catch (error) { interfaceText = error.stdout || ""; }
+  const adapters = [];
+  const blocks = driverText.split(/(?=\r?\n?\s*Interface name\s*:)/i).filter(block => /Interface name\s*:/i.test(block));
+  for (const adapterBlock of blocks) {
+    const get = label => (adapterBlock.match(new RegExp(label + "\\s*:\\s*(.+)", "i")) || [])[1]?.trim() || "";
+    adapters.push({
+      name: get("Interface name") || "Wireless adapter",
+      description: get("Driver") || get("Vendor") || "Windows WLAN driver",
+      driver: get("Driver version") || "Not reported",
+      radio: get("Radio types supported") || "Unknown"
+    });
+  }
+  const connected = (interfaceText.match(/\bSSID\s*:\s*(.+)/i) || [])[1]?.trim() || null;
+  return {
+    available: true,
+    rawCsiAvailable: false,
+    status: "no-csi-backend",
+    message: "Windows reports ordinary WLAN adapter information, but no raw Channel State Information capture interface or compatible CSI backend is installed. Movement and presence sensing remain disabled.",
+    wifiAdapters: adapters,
+    connectedSsid: connected,
+    checkedAt,
+    limitations: [
+      "netsh reports connection and driver details, not per-subcarrier CSI samples",
+      "Signal percentage cannot be used as a substitute for CSI",
+      "A compatible adapter, driver and capture backend must be verified before enabling sensing"
+    ]
+  };
+});
+ipcMain.handle("system:overview", () => { const cpus=os.cpus()||[]; const network=Object.values(os.networkInterfaces()).flat().filter(item=>item&&item.family==="IPv4"&&!item.internal).map(item=>({address:item.address,netmask:item.netmask})); return {computer:os.hostname(),operatingSystem:os.type()+" "+os.release(),architecture:os.arch(),processor:cpus[0]?.model||"Unknown",logicalCores:cpus.length,memoryTotalMB:Math.round(os.totalmem()/1048576),memoryFreeMB:Math.round(os.freemem()/1048576),uptimeMinutes:Math.round(os.uptime()/60),network}; });
 ipcMain.handle("mdt:network", async () => {
  if(mdtCache&&Date.now()-mdtCacheAt<10000)return {...mdtCache,cached:true};
  const interfaces=Object.values(os.networkInterfaces()).flat().filter(item=>item&&item.family==="IPv4"&&!item.internal&&(/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(item.address)));
