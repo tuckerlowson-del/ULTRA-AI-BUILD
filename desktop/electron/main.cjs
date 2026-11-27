@@ -99,19 +99,19 @@ let mdtCacheAt = 0;
 ipcMain.handle("system:overview", () => { const cpus=os.cpus()||[]; const network=Object.values(os.networkInterfaces()).flat().filter(item=>item&&item.family==="IPv4"&&!item.internal).map(item=>({address:item.address,netmask:item.netmask})); return {computer:os.hostname(),operatingSystem:os.type()+" "+os.release(),architecture:os.arch(),processor:cpus[0]?.model||"Unknown",logicalCores:cpus.length,memoryTotalMB:Math.round(os.totalmem()/1048576),memoryFreeMB:Math.round(os.freemem()/1048576),uptimeMinutes:Math.round(os.uptime()/60),network}; });
 ipcMain.handle("mdt:network", async () => {
  if(mdtCache&&Date.now()-mdtCacheAt<10000)return {...mdtCache,cached:true};
- const interfaces=Object.values(os.networkInterfaces()).flat().filter(item=>item&&item.family==="IPv4"&&!item.internal&&(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)/.test(item.address)));
+ const interfaces=Object.values(os.networkInterfaces()).flat().filter(item=>item&&item.family==="IPv4"&&!item.internal&&(/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(item.address)));
  const local=interfaces[0]||null;if(!local)return {devices:[],interfaceName:"No active private IPv4 network",updatedAt:new Date().toISOString(),method:"No private LAN interface found"};
  const [arpResult,neighborResult,wifiResult]=await Promise.allSettled([
   execFileAsync("arp.exe",["-a"],{windowsHide:true,timeout:4000,maxBuffer:30000}),
   execFileAsync("powershell.exe",["-NoProfile","-NonInteractive","-Command","Get-NetNeighbor -AddressFamily IPv4 | Where-Object { $_.State -notin @('Unreachable','Incomplete') } | Select-Object IPAddress,LinkLayerAddress,State | ConvertTo-Json -Compress"],{windowsHide:true,timeout:5000,maxBuffer:30000}),
   execFileAsync("netsh.exe",["wlan","show","interfaces"],{windowsHide:true,timeout:3000,maxBuffer:10000})
  ]);
- const found=new Map(),arp=arpResult.status==="fulfilled"?(arpResult.value.stdout||""):"",row=/((?:\\d{1,3}\\.){3}\\d{1,3})\\s+([0-9a-f-]{11,17})/ig;
+ const found=new Map(),arp=arpResult.status==="fulfilled"?(arpResult.value.stdout||""):"",row=/((?:\d{1,3}\.){3}\d{1,3})\s+([0-9a-f-]{11,17})/ig;
  for(const hit of arp.matchAll(row))found.set(hit[1],{ip:hit[1],mac:hit[2].replace(/-/g,":").toLowerCase(),source:"ARP cache"});
  if(neighborResult.status==="fulfilled"){try{const parsed=JSON.parse(neighborResult.value.stdout||"[]");for(const entry of (Array.isArray(parsed)?parsed:[parsed])){const ip=String(entry.IPAddress||""),mac=String(entry.LinkLayerAddress||"");if(ip&&mac&&mac!=="00-00-00-00-00-00")found.set(ip,{ip,mac:mac.replace(/-/g,":").toLowerCase(),source:"Windows neighbour cache",state:String(entry.State||"")});}}catch{}}
  const prefix=local.address.split(".").slice(0,3).join("."),devices=[{ip:local.address,name:os.hostname()||"This PC",kind:"Local device",local:true,source:"This PC"}];
  for(const entry of found.values())if(entry.ip.startsWith(prefix+".")&&entry.ip!==local.address&&!entry.ip.endsWith(".0")&&!entry.ip.endsWith(".255"))devices.push({...entry,name:"LAN device",kind:"Detected neighbour",local:false});
- const wifi=wifiResult.status==="fulfilled"?(wifiResult.value.stdout||""):"",signal=(wifi.match(/Signal\\s*:\\s*(\\d+)%/i)||[])[1]||null,ssid=(wifi.match(/SSID\\s*:\\s*(.+)/i)||[])[1]?.trim()||null;
+ const wifi=wifiResult.status==="fulfilled"?(wifiResult.value.stdout||""):"",signal=(wifi.match(/Signal\s*:\s*(\d+)%/i)||[])[1]||null,ssid=(wifi.match(/SSID\s*:\s*(.+)/i)||[])[1]?.trim()||null;
  mdtCache={devices,interfaceName:local.address,networkRange:prefix+".0/24",updatedAt:new Date().toISOString(),method:"ARP + Windows neighbour cache (no ping sweep)",wifi:{ssid,signalPercent:signal?Number(signal):null},scanNote:"Only devices visible to this PC in the active subnet are listed. This does not expose the router's full Wi-Fi client table, scan ports, or access other devices. Router APIs are needed for complete client lists; access-point telemetry is needed for movement estimates."};mdtCacheAt=Date.now();return mdtCache;
 });
 
@@ -233,7 +233,10 @@ ipcMain.handle("agent:run", async (_event, { task, key, model, endpoint }) => {
   if (!task || !String(task).trim()) throw new Error("Enter a task first.");
   if (!key) throw new Error("Add an API key or use AI Chat Local Assist.");
   running = true; stopRequested = false;
-  const chosenModel = model || "openai/gpt-4o";\n  const baseUrl=String(endpoint||"https://openrouter.ai/api/v1").trim().replace(/\\/+$/,"");\n  const apiUrl=baseUrl.endsWith("/chat/completions")?baseUrl:baseUrl+"/chat/completions";\n  const authorization=/^Bearer\\s/i.test(String(key).trim())?String(key).trim():"Bearer "+String(key).trim();
+  const chosenModel = model || "openai/gpt-4o";
+  const baseUrl=String(endpoint||"https://openrouter.ai/api/v1").trim().replace(/\/+$/,"");
+  const apiUrl=baseUrl.endsWith("/chat/completions")?baseUrl:baseUrl+"/chat/completions";
+  const authorization=/^Bearer\s/i.test(String(key).trim())?String(key).trim():"Bearer "+String(key).trim();
   const messages = [
     { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshots, accurately mapped mouse clicks, keyboard typing/keys, approved built-in app launching, running-app listing, workspace file listing/reading/folder opening, website opening, and read-only diagnostics. When the user's instruction is clear, execute it directly without asking a follow-up question or requesting approval for routine desktop actions. You may click, type, press permitted keys, open approved apps and URLs, and inspect the selected workspace whenever needed to complete the requested task. For multi-step tasks, plan briefly, carry out the steps in order, and verify results. Inspect a fresh screenshot before each click, use screenshot pixel coordinates, and verify important actions with another screenshot. Ask a question only if a genuinely essential detail is missing and guessing would cause a meaningful mistake. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Destructive or security-sensitive actions are unavailable. The selected workspace is the only file area you may inspect. Stop when asked." },
     { role: "user", content: String(task).slice(0, 6000) }
@@ -242,8 +245,8 @@ ipcMain.handle("agent:run", async (_event, { task, key, model, endpoint }) => {
     emit("status", "Agent planning task…", { model: chosenModel });
     for (let step = 0; step < 20; step++) {
       if (stopRequested) { emit("status", "Agent stopped."); break; }
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json", "HTTP-Referer": "https://one-brain-updater.tuckerlowson.workers.dev", "X-Title": "ONE BRAIN" },
+      const response = await fetch(apiUrl, {
+        method: "POST", headers: { "Authorization": authorization, "Content-Type": "application/json", "HTTP-Referer": "https://one-brain-updater.tuckerlowson.workers.dev", "X-Title": "ONE BRAIN" },
         body: JSON.stringify({ model: chosenModel, messages, tools: toolSpecs, tool_choice: "auto", temperature: 0.2 })
       });
       if (!response.ok) throw new Error("API provider returned " + response.status + ": " + (await response.text()).slice(0, 600));
