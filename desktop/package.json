@@ -84,7 +84,6 @@
         }
       ],
       "artifactName": "ONE-BRAIN-${version}-${arch}.${ext}",
-      "identity": null,
       "gatekeeperAssess": false
     },
     "dmg": {
