@@ -104,10 +104,10 @@ ipcMain.handle("app-data:save", async (_event, payload = {}) => {
     ...source,
     providerProfiles: Array.isArray(source.providerProfiles) ? source.providerProfiles.slice(0, 20) : [],
     pinnedChatIds: Array.isArray(source.pinnedChatIds) ? source.pinnedChatIds.slice(0, 60) : [],
-    chats: Array.isArray(source.chats) ? source.chats.slice(0, 60).map(chat => ({ ...chat, messages: Array.isArray(chat.messages) ? chat.messages.slice(-60).map(message => ({ ...message, content: String(message.content || "").slice(0, 12000) })) : [] })) : [],
-    chatMessages: Array.isArray(source.chatMessages) ? source.chatMessages.slice(-60).map(message => ({ ...message, content: String(message.content || "").slice(0, 12000) })) : [],
-    deviceHistory: Object.fromEntries(Object.entries(source.deviceHistory || {}).sort((a, b) => (Number(b[1]?.lastSeen) || 0) - (Number(a[1]?.lastSeen) || 0)).slice(0, 300)),
-    events: Array.isArray(source.events) ? source.events.slice(0, 40).map(event => ({ id: event.id, type: event.type, message: String(event.message || "").slice(0, 1200), at: event.at, tool: event.tool })) : []
+    chats: Array.isArray(source.chats) ? source.chats.slice(0, 30).map(chat => ({ ...chat, messages: Array.isArray(chat.messages) ? chat.messages.slice(-40).map(message => ({ ...message, content: String(message.content || "").slice(0, 5000) })) : [] })) : [],
+    chatMessages: Array.isArray(source.chatMessages) ? source.chatMessages.slice(-40).map(message => ({ ...message, content: String(message.content || "").slice(0, 5000) })) : [],
+    deviceHistory: Object.fromEntries(Object.entries(source.deviceHistory || {}).sort((a, b) => (Number(b[1]?.lastSeen) || 0) - (Number(a[1]?.lastSeen) || 0)).slice(0, 200)),
+    events: Array.isArray(source.events) ? source.events.slice(0, 30).map(event => ({ id: event.id, type: event.type, message: String(event.message || "").slice(0, 1000), at: event.at, tool: event.tool })) : []
   };
   const serialized = JSON.stringify(data);
   if (Buffer.byteLength(serialized, "utf8") > 8 * 1024 * 1024) throw new Error("ONE BRAIN data is too large after cleanup (8 MB limit).");
