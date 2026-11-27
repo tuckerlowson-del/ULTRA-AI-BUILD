@@ -158,3 +158,15 @@
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #55d8d0;outline-offset:2px}
 @media(max-width:1100px){.main{padding:20px 18px 14px}.sidebar{width:205px;padding:20px 12px}.chat-layout{grid-template-columns:205px minmax(0,1fr)}}
 @media(max-width:850px){body{min-width:760px}.sidebar{width:185px}.main{padding:16px 12px}.chat-layout{grid-template-columns:175px minmax(0,1fr);gap:9px}.chat-main .chat-toolbar{flex-wrap:wrap}.chat-main .chat-toolbar code{max-width:100%}.chat-compose{margin:8px}.chat-compose .run-btn{min-width:70px}}
+
+.chat-search-box{display:flex;align-items:center;gap:7px;padding:8px 9px;border:1px solid #29445b;border-radius:8px;background:#0a1522;color:#7594ad}
+.chat-search-box input{min-width:0;width:100%;border:0;outline:0;background:transparent;color:#dceafa;font-size:10px}
+.chat-search-box kbd,.new-chat-btn kbd{padding:2px 4px;border:1px solid #35516a;border-radius:4px;color:#7f9bb4;font:8px 'DM Mono';white-space:nowrap}
+.chat-history-pin{display:grid;place-items:center;padding:6px;border:0;border-radius:6px;background:transparent;color:#718ba4;cursor:pointer;opacity:.55}
+.chat-history-pin:hover,.chat-history-pin.pinned{color:#65d9c8;opacity:1;background:#173b45}
+.chat-bubble-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:6px}
+.chat-bubble-head small{margin:0}
+.chat-bubble-head>div{display:flex;align-items:center;gap:7px}
+.chat-bubble-head time{font:8px 'DM Mono';color:#607d96}
+.chat-bubble-head button{display:grid;place-items:center;padding:4px;border:0;border-radius:5px;background:transparent;color:#7d9ab3;cursor:pointer;opacity:.65}
+.chat-bubble-head button:hover{opacity:1;color:#79e6d7;background:#183e4a}
