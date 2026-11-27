@@ -96,62 +96,24 @@ ipcMain.handle("workspace:choose", async () => {
 ipcMain.on("agent:stop", () => { stopRequested = true; emit("status", "Stop requested. Finishing the current safe operation…"); });
 let mdtCache = null;
 let mdtCacheAt = 0;
+ipcMain.handle("system:overview", () => { const cpus=os.cpus()||[]; const network=Object.values(os.networkInterfaces()).flat().filter(item=>item&&item.family==="IPv4"&&!item.internal).map(item=>({address:item.address,netmask:item.netmask})); return {computer:os.hostname(),operatingSystem:os.type()+" "+os.release(),architecture:os.arch(),processor:cpus[0]?.model||"Unknown",logicalCores:cpus.length,memoryTotalMB:Math.round(os.totalmem()/1048576),memoryFreeMB:Math.round(os.freemem()/1048576),uptimeMinutes:Math.round(os.uptime()/60),network}; });
 ipcMain.handle("mdt:network", async () => {
-  if (mdtCache && Date.now() - mdtCacheAt < 15000) return { ...mdtCache, cached: true };
-  const interfaces = Object.values(os.networkInterfaces()).flat().filter(item =>
-    item && item.family === "IPv4" && !item.internal &&
-    (/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(item.address))
-  );
-  const local = interfaces[0] || null;
-  if (!local) return { devices: [], interfaceName: "No active private IPv4 network", updatedAt: new Date().toISOString(), method: "No private LAN interface found" };
-  const ipParts = local.address.split(".").map(Number);
-  const base = ipParts.slice(0, 3).join(".");
-  const candidates = Array.from({ length: 254 }, (_, i) => base + "." + (i + 1)).filter(ip => ip !== local.address);
-  let cursor = 0;
-  const responders = new Set();
-  const worker = async () => {
-    while (cursor < candidates.length) {
-      const ip = candidates[cursor++];
-      try {
-        await execFileAsync("ping", ["-n", "1", "-w", "350", ip], { windowsHide: true, timeout: 1000, maxBuffer: 2000 });
-        responders.add(ip);
-      } catch {}
-    }
-  };
-  await Promise.all(Array.from({ length: 24 }, worker));
-  let arpText = "";
-  try {
-    const result = await execFileAsync("arp", ["-a"], { windowsHide: true, timeout: 5000, maxBuffer: 30000 });
-    arpText = result.stdout || "";
-  } catch {}
-  const macs = new Map();
-  const rowPattern = /((?:\d{1,3}\.){3}\d{1,3})\s+([0-9a-f-]{11,17})/ig;
-  for (const match of arpText.matchAll(rowPattern)) macs.set(match[1], match[2].replace(/-/g, ":").toLowerCase());
-  // Include Windows' neighbour cache as well as ARP so recently seen LAN clients
-  // are not lost just because they did not answer this scan's ICMP request.
-  try {
-    const neighbourResult = await execFileAsync("powershell.exe", [
-      "-NoProfile", "-NonInteractive", "-Command",
-      "Get-NetNeighbor -AddressFamily IPv4 | Where-Object { $_.State -notin @('Unreachable','Incomplete') } | Select-Object IPAddress,LinkLayerAddress | ConvertTo-Json -Compress"
-    ], { windowsHide: true, timeout: 8000, maxBuffer: 30000 });
-    const parsed = JSON.parse(neighbourResult.stdout || "[]");
-    for (const entry of (Array.isArray(parsed) ? parsed : [parsed])) {
-      const ip = String(entry.IPAddress || "");
-      const mac = String(entry.LinkLayerAddress || "");
-      if (ip && mac && mac !== "00-00-00-00-00-00") macs.set(ip, mac.replace(/-/g, ":").toLowerCase());
-    }
-  } catch {}
-  const devices = [{ ip: local.address, name: os.hostname() || "This PC", kind: "Local device", local: true }];
-  for (const ip of candidates) {
-    const mac = macs.get(ip);
-    if (!responders.has(ip) && !mac) continue;
-    devices.push({ ip, mac: mac || null, name: "LAN device", kind: "Detected device", local: false });
-  }
-  mdtCache = { devices, interfaceName: local.address, networkRange: base + ".0/24", updatedAt: new Date().toISOString(), method: "CMD arp -a + Windows neighbour cache + local ping discovery", scanNote: "Device list is built from the Windows ARP table (arp -a) and neighbour cache for the active local /24. Devices hidden by router isolation or not visible to this PC may not appear. No ports were scanned and no devices were accessed." };
-  mdtCacheAt = Date.now();
-  return mdtCache;
+ if(mdtCache&&Date.now()-mdtCacheAt<10000)return {...mdtCache,cached:true};
+ const interfaces=Object.values(os.networkInterfaces()).flat().filter(item=>item&&item.family==="IPv4"&&!item.internal&&(/^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.)/.test(item.address)));
+ const local=interfaces[0]||null;if(!local)return {devices:[],interfaceName:"No active private IPv4 network",updatedAt:new Date().toISOString(),method:"No private LAN interface found"};
+ const [arpResult,neighborResult,wifiResult]=await Promise.allSettled([
+  execFileAsync("arp.exe",["-a"],{windowsHide:true,timeout:4000,maxBuffer:30000}),
+  execFileAsync("powershell.exe",["-NoProfile","-NonInteractive","-Command","Get-NetNeighbor -AddressFamily IPv4 | Where-Object { $_.State -notin @('Unreachable','Incomplete') } | Select-Object IPAddress,LinkLayerAddress,State | ConvertTo-Json -Compress"],{windowsHide:true,timeout:5000,maxBuffer:30000}),
+  execFileAsync("netsh.exe",["wlan","show","interfaces"],{windowsHide:true,timeout:3000,maxBuffer:10000})
+ ]);
+ const found=new Map(),arp=arpResult.status==="fulfilled"?(arpResult.value.stdout||""):"",row=/((?:\\d{1,3}\\.){3}\\d{1,3})\\s+([0-9a-f-]{11,17})/ig;
+ for(const hit of arp.matchAll(row))found.set(hit[1],{ip:hit[1],mac:hit[2].replace(/-/g,":").toLowerCase(),source:"ARP cache"});
+ if(neighborResult.status==="fulfilled"){try{const parsed=JSON.parse(neighborResult.value.stdout||"[]");for(const entry of (Array.isArray(parsed)?parsed:[parsed])){const ip=String(entry.IPAddress||""),mac=String(entry.LinkLayerAddress||"");if(ip&&mac&&mac!=="00-00-00-00-00-00")found.set(ip,{ip,mac:mac.replace(/-/g,":").toLowerCase(),source:"Windows neighbour cache",state:String(entry.State||"")});}}catch{}}
+ const prefix=local.address.split(".").slice(0,3).join("."),devices=[{ip:local.address,name:os.hostname()||"This PC",kind:"Local device",local:true,source:"This PC"}];
+ for(const entry of found.values())if(entry.ip.startsWith(prefix+".")&&entry.ip!==local.address&&!entry.ip.endsWith(".0")&&!entry.ip.endsWith(".255"))devices.push({...entry,name:"LAN device",kind:"Detected neighbour",local:false});
+ const wifi=wifiResult.status==="fulfilled"?(wifiResult.value.stdout||""):"",signal=(wifi.match(/Signal\\s*:\\s*(\\d+)%/i)||[])[1]||null,ssid=(wifi.match(/SSID\\s*:\\s*(.+)/i)||[])[1]?.trim()||null;
+ mdtCache={devices,interfaceName:local.address,networkRange:prefix+".0/24",updatedAt:new Date().toISOString(),method:"ARP + Windows neighbour cache (no ping sweep)",wifi:{ssid,signalPercent:signal?Number(signal):null},scanNote:"Only devices visible to this PC in the active subnet are listed. This does not expose the router's full Wi-Fi client table, scan ports, or access other devices. Router APIs are needed for complete client lists; access-point telemetry is needed for movement estimates."};mdtCacheAt=Date.now();return mdtCache;
 });
-
 
 function withinWorkspace(candidate) {
   const resolved = path.resolve(workspace, candidate || ".");
