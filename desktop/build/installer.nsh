@@ -83,7 +83,7 @@ Function OBUnWelcomePageCreate
   ${If} $OBWelcomeDialog == error
     Abort
   ${EndIf}
-  !insertmacro MUI_UN_HEADER_TEXT "Remove ONE BRAIN" "Choose Next to continue uninstalling."
+  !insertmacro MUI_HEADER_TEXT "Remove ONE BRAIN" "Choose Next to continue uninstalling."
   ${NSD_CreateLabel} 0 8u 100% 20u "ONE BRAIN"
   Pop $OBWelcomeTitle
   SetCtlColors $OBWelcomeTitle "65E6D0" "101B2B"
