@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell, safeStorage, screen, Notification, clipboard } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell, safeStorage, screen, Notification, clipboard, Tray, Menu, nativeImage } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const fs = require("node:fs/promises");
@@ -7,6 +7,8 @@ const { promisify } = require("node:util");
 const os = require("node:os");
 const execFileAsync = promisify(execFile);
 let mainWindow;
+let tray=null;
+let allowQuit=false;
 const hasSingleInstanceLock = app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) app.quit();
 else app.on("second-instance", () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
@@ -57,6 +59,7 @@ function createWindow() {
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
+  mainWindow.on("close", event => { if (!allowQuit) { event.preventDefault(); mainWindow.hide(); } });
   if (!app.isPackaged) mainWindow.loadURL("http://127.0.0.1:5173");
   else mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
 }
@@ -64,10 +67,11 @@ app.setAppUserModelId("com.tuckerlowson.onebrain");
 app.whenReady().then(() => {
   if (!hasSingleInstanceLock) return;
   createWindow();
+  try { const iconPath=path.join(__dirname,"../assets/onebrain.ico"); const icon=nativeImage.createFromPath(iconPath); if(!icon.isEmpty()){tray=new Tray(icon);tray.setToolTip("ONE BRAIN");tray.setContextMenu(Menu.buildFromTemplate([{label:"Open ONE BRAIN",click:()=>{if(mainWindow){mainWindow.show();mainWindow.focus();}}},{type:"separator"},{label:"Quit ONE BRAIN",click:()=>{allowQuit=true;app.quit();}}]));tray.on("double-click",()=>{if(mainWindow){mainWindow.show();mainWindow.focus();}});} } catch(error){console.warn("System tray unavailable:",error.message);}
   configureAutoUpdates();
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
 });
-app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
+app.on("window-all-closed", () => { /* Keep the background agent alive in the system tray until the user chooses Quit. */ });
 ipcMain.handle("updates:get", () => updateState);
 ipcMain.handle("notifications:show", (_event, payload = {}) => {
   showWindowsNotification(payload.title || "ONE BRAIN", payload.body || "");
@@ -313,19 +317,30 @@ async function computerAction(kind, args) {
     return { ok: true, key: String(args.key).toUpperCase() };
   }
 }
+function isSensitiveName(name){return /(^|[._ -])(passwords?|credentials?|secrets?|tokens?|private[-_ ]?keys?|wallet|cookies?|login[-_ ]?data)([._ -]|$)/i.test(String(name||""));}
+function resolvePcPath(input){
+  const raw=String(input||"").trim();
+  if(!raw||raw.startsWith("\\\\")||raw.startsWith("//"))throw new Error("Use an absolute local-drive path; network shares are not accessible.");
+  const target=path.resolve(raw);
+  if(!/^[A-Za-z]:\\\\/.test(target))throw new Error("Only absolute local-drive paths are supported.");
+  const lower=target.toLowerCase().replace(/\\\\+$/,"");
+  const protectedRoots=["c:\\\\windows","c:\\\\program files","c:\\\\program files (x86)","c:\\\\programdata","c:\\\\$recycle.bin","c:\\\\system volume information"];
+  if(protectedRoots.some(root=>lower===root||lower.startsWith(root+"\\\\")))throw new Error("Protected Windows and application directories are excluded.");
+  return target;
+}
 const toolSpecs = [
   { type: "function", function: { name: "computer_screenshot", description: "Capture the current desktop and show it in the live preview.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "computer_click", description: "Click a pixel coordinate from the latest desktop screenshot. Inspect a fresh screenshot first. Coordinates are mapped to the real display resolution; routine clicks execute immediately.", parameters: { type: "object", properties: { x: { type: "integer", minimum: 0, maximum: 1279 }, y: { type: "integer", minimum: 0, maximum: 719 } }, required: ["x","y"], additionalProperties: false } } },
   { type: "function", function: { name: "computer_type", description: "Type text into the currently focused application immediately. Do not type passwords or payment details.", parameters: { type: "object", properties: { text: { type: "string", maxLength: 1000 } }, required: ["text"], additionalProperties: false } } },
   { type: "function", function: { name: "computer_press_key", description: "Press one permitted key immediately: ENTER, TAB, ESC, SPACE, BACKSPACE, UP, DOWN, LEFT, RIGHT.", parameters: { type: "object", properties: { key: { type: "string" } }, required: ["key"], additionalProperties: false } } },
   { type: "function", function: { name: "open_url", description: "Open an HTTP or HTTPS web address in the default browser immediately.", parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"], additionalProperties: false } } },
-  { type: "function", function: { name: "list_workspace", description: "List files and folders in the selected workspace or a relative subfolder.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } },
-  { type: "function", function: { name: "read_text_file", description: "Read a small text file inside the selected workspace.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false } } },
+  { type: "function", function: { name: "list_pc_files", description: "List ordinary files and folders at an absolute path anywhere on a local fixed drive. System folders, credential stores and network shares are excluded.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false } } },
+  { type: "function", function: { name: "read_pc_text_file", description: "Read a small text or source-code file at an absolute path on a local fixed drive. Credential, key and secret files are blocked.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false } } },
   { type: "function", function: { name: "run_safe_command", description: "Run a read-only diagnostic command from the permitted list immediately.", parameters: { type: "object", properties: { command: { type: "string", enum: ["whoami","hostname","ipconfig","tasklist","systeminfo","ver","date","time"] } }, required: ["command"], additionalProperties: false } } },
   { type: "function", function: { name: "get_system_overview", description: "Read basic PC hardware, memory, uptime and local network summary.", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "list_running_apps", description: "List running Windows applications and processes (read-only).", parameters: { type: "object", properties: {}, additionalProperties: false } } },
   { type: "function", function: { name: "launch_approved_app", description: "Launch an approved built-in Windows app immediately.", parameters: { type: "object", properties: { app: { type: "string", enum: ["notepad","calculator","file_explorer","task_manager","paint","settings"] } }, required: ["app"], additionalProperties: false } } },
-  { type: "function", function: { name: "open_workspace_folder", description: "Open the selected workspace or a subfolder in File Explorer immediately.", parameters: { type: "object", properties: { path: { type: "string" } }, additionalProperties: false } } }
+  { type: "function", function: { name: "open_pc_folder", description: "Open an ordinary local folder in File Explorer. Protected Windows system folders and network shares are blocked.", parameters: { type: "object", properties: { path: { type: "string" } }, required: ["path"], additionalProperties: false } } }
 ];
 async function executeTool(name, args) {
   if (name === "computer_screenshot") return captureScreen();
@@ -335,15 +350,18 @@ async function executeTool(name, args) {
     if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Only HTTP and HTTPS links are allowed.");
     await shell.openExternal(parsed.href); return { ok: true, url: parsed.href };
   }
-  if (name === "list_workspace") {
-    const target = withinWorkspace(args.path || ".");
+  if (name === "list_pc_files") {
+    const target = resolvePcPath(args.path);
     const entries = await fs.readdir(target, { withFileTypes: true });
-    return entries.slice(0, 100).map(entry => ({ name: entry.name, type: entry.isDirectory() ? "folder" : "file" }));
+    return entries.filter(entry => !isSensitiveName(entry.name)).slice(0, 150).map(entry => ({ name: entry.name, type: entry.isDirectory() ? "folder" : "file" }));
   }
-  if (name === "read_text_file") {
-    const target = withinWorkspace(args.path);
+  if (name === "read_pc_text_file") {
+    const target = resolvePcPath(args.path);
+    if (isSensitiveName(path.basename(target))) throw new Error("This filename is treated as sensitive and cannot be read.");
     const stat = await fs.stat(target);
     if (!stat.isFile() || stat.size > 200000) throw new Error("Only text files up to 200 KB can be read.");
+    const ext=path.extname(target).toLowerCase();
+    if(![".txt",".md",".json",".js",".jsx",".ts",".tsx",".css",".html",".xml",".yml",".yaml",".toml",".ini",".log",".py",".c",".h",".cpp",".cs",".java",".kt",".rs",".go",".sql",".sh",".bat",".cmd",".ps1"].includes(ext)) throw new Error("This file type is not enabled for text inspection.");
     return (await fs.readFile(target, "utf8")).slice(0, 200000);
   }
   if (name === "get_system_overview") {
@@ -364,8 +382,9 @@ async function executeTool(name, args) {
     else { const child = spawn(target, [], { detached: true, stdio: "ignore", windowsHide: false }); child.unref(); }
     return { ok: true, launched: args.app };
   }
-  if (name === "open_workspace_folder") {
-    const target = withinWorkspace(args.path || ".");
+  if (name === "open_pc_folder") {
+    const target = resolvePcPath(args.path);
+    const stat=await fs.stat(target); if(!stat.isDirectory()) throw new Error("Choose a folder path.");
     const error = await shell.openPath(target);
     if (error) throw new Error(error);
     return { ok: true, path: target };
@@ -405,7 +424,7 @@ ipcMain.handle("agent:run", async (_event, { task, key, model, endpoint }) => {
   const apiUrl=baseUrl.endsWith("/chat/completions")?baseUrl:baseUrl+"/chat/completions";
   const authorization=/^Bearer\s/i.test(String(key).trim())?String(key).trim():"Bearer "+String(key).trim();
   const messages = [
-    { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshots, accurately mapped mouse clicks, keyboard typing/keys, approved built-in app launching, running-app listing, workspace file listing/reading/folder opening, website opening, and read-only diagnostics. When the user's instruction is clear, execute it directly without asking a follow-up question or requesting approval for routine desktop actions. You may click, type, press permitted keys, open approved apps and URLs, and inspect the selected workspace whenever needed to complete the requested task. For multi-step tasks, plan briefly, carry out the steps in order, and verify results. Inspect a fresh screenshot before each click, use screenshot pixel coordinates, and verify important actions with another screenshot. Ask a question only if a genuinely essential detail is missing and guessing would cause a meaningful mistake. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Destructive or security-sensitive actions are unavailable. The selected workspace is the only file area you may inspect. Stop when asked." },
+    { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshots, accurately mapped mouse clicks, keyboard typing/keys, approved built-in app launching, running-app listing, workspace file listing/reading/folder opening, website opening, and read-only diagnostics. When the user's instruction is clear, execute it directly without asking a follow-up question or requesting approval for routine desktop actions. You may click, type, press permitted keys, open approved apps and URLs, and inspect the selected workspace whenever needed to complete the requested task. For multi-step tasks, plan briefly, carry out the steps in order, and verify results. Inspect a fresh screenshot before each click, use screenshot pixel coordinates, and verify important actions with another screenshot. Ask a question only if a genuinely essential detail is missing and guessing would cause a meaningful mistake. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Destructive or security-sensitive actions are unavailable. You may inspect ordinary user files across local fixed drives when the user asks. Protected operating-system folders, network shares, credential stores, password databases, private keys and files with names suggesting secrets are blocked. File inspection is read-only. Never delete or modify files, install software, change security settings or run arbitrary shell commands. Stop when asked." },
     { role: "user", content: String(task).slice(0, 6000) }
   ];
   try {
