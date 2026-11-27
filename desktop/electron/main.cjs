@@ -20,27 +20,27 @@ let modelCatalogCache = { key: "", at: 0, data: [] };
 let stopRequested = false;
 let running = false;
 let updateState = { status: "idle", message: "Updates have not been checked yet.", version: null, percent: 0 };
-function showWindowsNotification(title, body) {
+function showSystemNotification(title, body) {
   try {
     if (Notification.isSupported()) {
       const notification = new Notification({ title: String(title || "ONE BRAIN"), body: String(body || ""), silent: false });
       notification.show();
     }
-  } catch (error) { console.warn("Windows notification unavailable:", error.message); }
+  } catch (error) { console.warn("System notification unavailable:", error.message); }
 }
 function emitUpdate(status, message, extra = {}) {
   updateState = { ...updateState, status, message, ...extra };
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("updates:status", updateState);
 }
 function configureAutoUpdates() {
-  if (!app.isPackaged || process.platform !== "win32") { emitUpdate("unsupported", "Automatic updates are available in the installed Windows version."); return; }
+  if (!app.isPackaged || !["win32", "darwin"].includes(process.platform)) { emitUpdate("unsupported", "Automatic updates are available in installed Windows and macOS desktop builds."); return; }
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on("checking-for-update", () => emitUpdate("checking", "Checking GitHub Releases for updates…"));
   autoUpdater.on("update-available", info => {
     const message = "Version " + info.version + " is available.";
     emitUpdate("available", message, { version: info.version, percent: 0 });
-    showWindowsNotification("ONE BRAIN update available", message + " Open ONE BRAIN → Settings → Software Updates.");
+    showSystemNotification("ONE BRAIN update available", message + " Open ONE BRAIN → Settings → Software Updates.");
   });
   autoUpdater.on("update-not-available", info => emitUpdate("current", "You are using the latest version (" + info.version + ").", { version: info.version, percent: 0 }));
   autoUpdater.on("download-progress", progress => emitUpdate("downloading", "Downloading update… " + Math.round(progress.percent) + "%", { percent: Math.round(progress.percent) }));
@@ -74,7 +74,7 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => { /* Keep the background agent alive in the system tray until the user chooses Quit. */ });
 ipcMain.handle("updates:get", () => updateState);
 ipcMain.handle("notifications:show", (_event, payload = {}) => {
-  showWindowsNotification(payload.title || "ONE BRAIN", payload.body || "");
+  showSystemNotification(payload.title || "ONE BRAIN", payload.body || "");
   return { ok: true };
 });
 
@@ -144,7 +144,7 @@ ipcMain.handle("models:list", async (_event, { endpoint, key } = {}) => {
 });
 
 ipcMain.handle("updates:check", async () => {
-  if (!app.isPackaged || process.platform !== "win32") return { ...updateState, status: "unsupported", message: "Install the Windows desktop version to use automatic updates." };
+  if (!app.isPackaged || !["win32", "darwin"].includes(process.platform)) return { ...updateState, status: "unsupported", message: "Install the Windows or macOS desktop version to use automatic updates." };
   emitUpdate("checking", "Checking GitHub Releases for updates…");
   try { await autoUpdater.checkForUpdates(); } catch (error) { emitUpdate("error", "Update check failed: " + error.message); }
   return updateState;
