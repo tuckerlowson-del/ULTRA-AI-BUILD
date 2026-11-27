@@ -320,3 +320,19 @@ body,#root{height:100%;min-height:0;overflow:hidden}
 .shell button,.shell a,.shell select{cursor:pointer}
 .shell button:hover{filter:brightness(1.06)}
 .shell input,.shell textarea{cursor:text}
+
+
+/* First-run guided tutorial and replay controls. */
+.tutorial-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:22px;background:rgba(2,7,14,.84);backdrop-filter:blur(12px)}
+.tutorial-window{width:min(680px,100%);max-height:min(760px,calc(100dvh - 44px));overflow:auto;padding:26px;border:1px solid rgba(var(--ob-accent-rgb),.34);border-radius:22px;background:radial-gradient(ellipse at 50% 0%,rgba(var(--ob-accent-rgb),.13),transparent 48%),#0d1827;box-shadow:0 28px 100px #000b;color:#eaf3fb}
+.tutorial-top,.tutorial-footer,.tutorial-nav{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tutorial-brand{display:flex;align-items:center;gap:9px;color:var(--ob-accent);font:700 10px var(--ob-font);letter-spacing:1.5px}
+.tutorial-progress{height:5px;margin:22px 0 17px;overflow:hidden;border-radius:99px;background:#203246}
+.tutorial-progress span{display:block;height:100%;border-radius:99px;background:var(--ob-accent);transition:width .2s ease}
+.tutorial-count{color:#829bb2;font:700 9px var(--ob-font);letter-spacing:1.5px}
+.tutorial-symbol{width:58px;height:58px;margin:20px 0 14px;display:grid;place-items:center;border:1px solid rgba(var(--ob-accent-rgb),.28);border-radius:17px;background:rgba(var(--ob-accent-rgb),.1);color:var(--ob-accent)}
+.tutorial-window h2{margin:0 0 12px;font-size:clamp(21px,4vw,29px);letter-spacing:-.7px}
+.tutorial-window>p{min-height:112px;margin:0;color:#a9bdcf;font-size:13px;line-height:1.85}
+.tutorial-footer{margin-top:25px;padding-top:18px;border-top:1px solid #24374b}
+.tutorial-settings-card{border-color:rgba(var(--ob-accent-rgb),.25)}
+@media(max-width:600px){.tutorial-window{padding:19px}.tutorial-window>p{min-height:0}.tutorial-footer{align-items:stretch;flex-direction:column}.tutorial-nav{justify-content:flex-end}}
