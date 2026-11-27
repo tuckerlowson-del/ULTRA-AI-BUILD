@@ -43,13 +43,13 @@ jobs:
       - name: Assign unique Android app version
         id: appversion
         run: |
-          VERSION="0.6.${GITHUB_RUN_NUMBER}"
+          VERSION="0.7.${GITHUB_RUN_NUMBER}"
           npm version "$VERSION" --no-git-tag-version
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
       - name: Build React app
         env:
           VITE_BUILD_NUMBER: ${{ github.run_number }}
-          VITE_APP_VERSION: 0.6.1.${{ github.run_number }}
+          VITE_APP_VERSION: 0.7.${{ github.run_number }}
         run: npm run build
       - name: Generate Android project
         run: npx cap add android
