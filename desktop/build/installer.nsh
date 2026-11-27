@@ -1,5 +1,6 @@
 !include "nsDialogs.nsh"
 !include "LogicLib.nsh"
+!include "WinMessages.nsh"
 
 Var OBWelcomeDialog
 Var OBWelcomeTitle
