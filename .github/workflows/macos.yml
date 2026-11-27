@@ -17,9 +17,7 @@ jobs:
     runs-on: macos-latest
     env:
       VITE_BUILD_NUMBER: ${{ github.run_number }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
-      CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     defaults:
       run:
         working-directory: desktop
@@ -37,7 +35,7 @@ jobs:
           VITE_APP_VERSION: 0.7.${{ github.run_number }}
         run: npm run build
       - name: Package and publish macOS installers
-        run: npx electron-builder --mac dmg zip --arm64 --x64 --publish always
+        run: npx electron-builder --mac dmg zip --arm64 --x64 --publish never
       - name: Upload macOS installers to workflow
         uses: actions/upload-artifact@v4
         with:
