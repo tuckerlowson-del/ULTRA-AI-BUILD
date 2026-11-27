@@ -322,10 +322,10 @@ function resolvePcPath(input){
   const raw=String(input||"").trim();
   if(!raw||raw.startsWith("\\\\")||raw.startsWith("//"))throw new Error("Use an absolute local-drive path; network shares are not accessible.");
   const target=path.resolve(raw);
-  if(!/^[A-Za-z]:\\\\/.test(target))throw new Error("Only absolute local-drive paths are supported.");
-  const lower=target.toLowerCase().replace(/\\\\+$/,"");
-  const protectedRoots=["c:\\\\windows","c:\\\\program files","c:\\\\program files (x86)","c:\\\\programdata","c:\\\\$recycle.bin","c:\\\\system volume information"];
-  if(protectedRoots.some(root=>lower===root||lower.startsWith(root+"\\\\")))throw new Error("Protected Windows and application directories are excluded.");
+  if(!/^[A-Za-z]:\\/.test(target))throw new Error("Only absolute local-drive paths are supported.");
+  const lower=target.toLowerCase().replace(/\\+$/,"");
+  const protectedRoots=["c:\\windows","c:\\program files","c:\\program files (x86)","c:\\programdata","c:\\$recycle.bin","c:\\system volume information"];
+  if(protectedRoots.some(root=>lower===root||lower.startsWith(root+"\\")))throw new Error("Protected Windows and application directories are excluded.");
   return target;
 }
 const toolSpecs = [
