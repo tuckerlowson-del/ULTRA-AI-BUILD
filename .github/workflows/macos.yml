@@ -9,22 +9,17 @@ on:
       - ".github/workflows/macos.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   macos-desktop:
-    name: Build macOS (${{ matrix.arch }})
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-14
-            arch: arm64
-          - runner: macos-13
-            arch: x64
+    name: Build macOS (Apple Silicon + Intel)
+    runs-on: macos-14
     env:
       VITE_BUILD_NUMBER: ${{ github.run_number }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CSC_LINK: ${{ secrets.MACOS_CERTIFICATE }}
+      CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
     defaults:
       run:
         working-directory: desktop
@@ -43,13 +38,13 @@ jobs:
         env:
           VITE_APP_VERSION: 0.7.${{ github.run_number }}
         run: npm run build
-      - name: Package macOS app
-        run: npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never
-      - name: Upload macOS app
+      - name: Package and publish macOS installers
+        run: npx electron-builder --mac dmg zip --arm64 --x64 --publish always
+      - name: Upload macOS installers to workflow
         uses: actions/upload-artifact@v4
         with:
-          name: ONE-BRAIN-MACOS-${{ matrix.arch }}-${{ github.run_number }}
-          path:
+          name: ONE-BRAIN-MACOS-${{ github.run_number }}
+          path: |
             desktop/dist-installer/*.dmg
             desktop/dist-installer/*.zip
           if-no-files-found: error
