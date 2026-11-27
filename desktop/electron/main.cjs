@@ -96,14 +96,14 @@ ipcMain.handle("app-data:save", async (_event, payload = {}) => {
   return { saved: true, savedAt: new Date().toISOString(), bytes: Buffer.byteLength(serialized, "utf8") };
 });
 ipcMain.handle("models:list", async (_event, { endpoint, key } = {}) => {
-  const base = String(endpoint || "https://openrouter.ai/api/v1").trim().replace(/\\/+$/, "");
+  const base = String(endpoint || "https://openrouter.ai/api/v1").trim().replace(/\/+$/, "");
   const parsed = new URL(base);
   if (parsed.protocol !== "https:" || parsed.username || parsed.password) throw new Error("Model catalogue requires a secure HTTPS provider endpoint.");
   const target = base + (base.endsWith("/models") ? "" : "/models");
   const cacheKey = target + "|" + (String(key || "").length ? "authenticated" : "public");
   if (modelCatalogCache.key === cacheKey && Date.now() - modelCatalogCache.at < 5 * 60 * 1000) return { source: target, models: modelCatalogCache.data, cached: true };
   const headers = { "Accept": "application/json" };
-  if (key) headers.Authorization = /^Bearer\\s/i.test(String(key).trim()) ? String(key).trim() : "Bearer " + String(key).trim();
+  if (key) headers.Authorization = /^Bearer\s/i.test(String(key).trim()) ? String(key).trim() : "Bearer " + String(key).trim();
   let nextUrl = target;
   const list = [];
   for (let page = 0; nextUrl && page < 20; page++) {
