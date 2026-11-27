@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell, safeStorage, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, desktopCapturer, shell, safeStorage, screen, Notification } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path = require("node:path");
 const fs = require("node:fs/promises");
@@ -16,6 +16,14 @@ const apiKeyFile = path.join(app.getPath("userData"), "openrouter-key.enc");
 let stopRequested = false;
 let running = false;
 let updateState = { status: "idle", message: "Updates have not been checked yet.", version: null, percent: 0 };
+function showWindowsNotification(title, body) {
+  try {
+    if (Notification.isSupported()) {
+      const notification = new Notification({ title: String(title || "ONE BRAIN"), body: String(body || ""), silent: false });
+      notification.show();
+    }
+  } catch (error) { console.warn("Windows notification unavailable:", error.message); }
+}
 function emitUpdate(status, message, extra = {}) {
   updateState = { ...updateState, status, message, ...extra };
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("updates:status", updateState);
@@ -25,7 +33,11 @@ function configureAutoUpdates() {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on("checking-for-update", () => emitUpdate("checking", "Checking GitHub Releases for updates…"));
-  autoUpdater.on("update-available", info => emitUpdate("available", "Version " + info.version + " is available.", { version: info.version, percent: 0 }));
+  autoUpdater.on("update-available", info => {
+    const message = "Version " + info.version + " is available.";
+    emitUpdate("available", message, { version: info.version, percent: 0 });
+    showWindowsNotification("ONE BRAIN update available", message + " Open ONE BRAIN → Settings → Software Updates.");
+  });
   autoUpdater.on("update-not-available", info => emitUpdate("current", "You are using the latest version (" + info.version + ").", { version: info.version, percent: 0 }));
   autoUpdater.on("download-progress", progress => emitUpdate("downloading", "Downloading update… " + Math.round(progress.percent) + "%", { percent: Math.round(progress.percent) }));
   autoUpdater.on("update-downloaded", info => emitUpdate("downloaded", "Version " + info.version + " is ready to install.", { version: info.version, percent: 100 }));
@@ -46,6 +58,7 @@ function createWindow() {
   if (!app.isPackaged) mainWindow.loadURL("http://127.0.0.1:5173");
   else mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
 }
+app.setAppUserModelId("com.tuckerlowson.onebrain");
 app.whenReady().then(() => {
   if (!hasSingleInstanceLock) return;
   createWindow();
@@ -54,6 +67,10 @@ app.whenReady().then(() => {
 });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 ipcMain.handle("updates:get", () => updateState);
+ipcMain.handle("notifications:show", (_event, payload = {}) => {
+  showWindowsNotification(payload.title || "ONE BRAIN", payload.body || "");
+  return { ok: true };
+});
 ipcMain.handle("updates:check", async () => {
   if (!app.isPackaged || process.platform !== "win32") return { ...updateState, status: "unsupported", message: "Install the Windows desktop version to use automatic updates." };
   emitUpdate("checking", "Checking GitHub Releases for updates…");
