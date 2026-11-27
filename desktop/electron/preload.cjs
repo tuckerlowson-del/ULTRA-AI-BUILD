@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld("onebrain", {
   downloadUpdate: () => ipcRenderer.invoke("updates:download"),
   installUpdate: () => ipcRenderer.invoke("updates:install"),
   onUpdateStatus: (callback) => { const handler = (_event, payload) => callback(payload); ipcRenderer.on("updates:status", handler); return () => ipcRenderer.removeListener("updates:status", handler); },
-  runAgent: (task, key, model) => ipcRenderer.invoke("agent:run", { task, key, model }),
+  runAgent: (task, key, model, endpoint) => ipcRenderer.invoke("agent:run", { task, key, model, endpoint }),
   stopAgent: () => ipcRenderer.send("agent:stop"),
   chooseWorkspace: () => ipcRenderer.invoke("workspace:choose"),
   getWorkspace: () => ipcRenderer.invoke("workspace:get"),
