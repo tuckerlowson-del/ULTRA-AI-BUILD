@@ -314,3 +314,9 @@ body,#root{height:100%;min-height:0;overflow:hidden}
 @media(max-width:900px){.shell{height:100dvh}.sidebar{width:190px}.main{padding:18px 14px}.topbar{height:auto;min-height:60px;margin-bottom:16px}}
 @media(max-width:680px){.shell{flex-direction:column}.sidebar{width:100%;height:auto;max-height:118px;overflow-x:auto;overflow-y:hidden;display:flex;flex-direction:row;align-items:center;padding:8px;gap:6px}.brand{padding:0 8px;flex:none}.brand-mark{width:34px;height:34px}.brand small,.side-label,.side-spacer,.connection,.version{display:none}.nav{flex:none;min-height:38px;white-space:nowrap;margin:0;padding:8px 10px}.main{height:calc(100dvh - 118px);padding:14px 12px}.shell[data-layout="focus"] .sidebar{width:100%}.shell[data-layout="focus"] .nav{font-size:10px}.coming-page{min-height:100%}}
 @media(prefers-reduced-motion:reduce){.shell :is(.panel,.task-card,.dashboard-welcome,.chat-history-panel,.chat-main){animation:none}}
+
+/* Custom in-app pointer and interaction feedback. */
+:root{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='28' viewBox='0 0 24 28'%3E%3Cpath d='M2 2v21l6-6 4 9 4-2-4-9h9z' fill='%23e8ffff' stroke='%230a273b' stroke-width='1.8' stroke-linejoin='round'/%3E%3C/svg%3E") 2 2,auto}
+.shell button,.shell a,.shell select{cursor:pointer}
+.shell button:hover{filter:brightness(1.06)}
+.shell input,.shell textarea{cursor:text}
