@@ -183,7 +183,7 @@ let mdtCache = null;
 let mdtCacheAt = 0;
 ipcMain.handle("csi:diagnostics", async () => {
   const checkedAt = new Date().toISOString();
-  if (process.platform !== "win32") return { available: false, rawCsiAvailable: false, status: "unsupported-platform", message: "This build currently checks Windows wireless diagnostics only. No CSI capture backend is configured.", wifiAdapters: [], checkedAt };
+  if (process.platform !== "win32") return { available: false, rawCsiAvailable: false, status: "unsupported-platform", message: "This build currently checks Windows wireless diagnostics only. No CSI capture backend is configured.", wifiAdapters: [], hardwareInventory: [], checkedAt };
   let driverText = "";
   try {
     const result = await execFileAsync("netsh.exe", ["wlan", "show", "drivers"], { windowsHide: true, timeout: 5000, maxBuffer: 20000 });
@@ -194,15 +194,38 @@ ipcMain.handle("csi:diagnostics", async () => {
     const result = await execFileAsync("netsh.exe", ["wlan", "show", "interfaces"], { windowsHide: true, timeout: 4000, maxBuffer: 12000 });
     interfaceText = result.stdout || "";
   } catch (error) { interfaceText = error.stdout || ""; }
+  let inventoryText = "";
+  try {
+    const result = await execFileAsync("wmic.exe", ["path", "win32_networkadapter", "get", "Name,Manufacturer,PNPDeviceID", "/format:csv"], { windowsHide: true, timeout: 5000, maxBuffer: 30000 });
+    inventoryText = result.stdout || "";
+  } catch (error) { inventoryText = error.stdout || ""; }
+  const hardwareInventory = inventoryText.split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => {
+    const columns = line.split(",");
+    if (columns.length < 4) return null;
+    const pnpDeviceId = columns[columns.length - 1].trim();
+    if (!/(PCI|USB)\\VEN_[0-9A-F]{4}&DEV_[0-9A-F]{4}/i.test(pnpDeviceId)) return null;
+    const name = columns[columns.length - 2].trim();
+    const manufacturer = columns[columns.length - 3].trim();
+    const id = (pnpDeviceId.match(/VEN_([0-9A-F]{4})&DEV_([0-9A-F]{4})/i) || []);
+    const vendorDevice = id.length ? id[1].toUpperCase() + ":" + id[2].toUpperCase() : "";
+    const chipset = vendorDevice === "14E4:4315" ? "Broadcom BCM4312 family" : "";
+    const csiSupport = vendorDevice === "14E4:4315" ? "Not supported by the currently documented Nexmon CSI extractor" : "Raw CSI support not verified";
+    return { name, manufacturer, pnpDeviceId, vendorDevice, chipset, csiSupport };
+  }).filter(Boolean);
   const adapters = [];
   const blocks = driverText.split(/(?=\r?\n?\s*Interface name\s*:)/i).filter(block => /Interface name\s*:/i.test(block));
   for (const adapterBlock of blocks) {
     const get = label => (adapterBlock.match(new RegExp(label + "\\s*:\\s*(.+)", "i")) || [])[1]?.trim() || "";
+    const description = get("Driver") || get("Vendor") || "Windows WLAN driver";
+    const hardware = hardwareInventory.find(item => item.name && description.toLowerCase().includes(item.name.toLowerCase()));
     adapters.push({
       name: get("Interface name") || "Wireless adapter",
-      description: get("Driver") || get("Vendor") || "Windows WLAN driver",
+      description,
       driver: get("Driver version") || "Not reported",
-      radio: get("Radio types supported") || "Unknown"
+      radio: get("Radio types supported") || "Unknown",
+      hardwareId: hardware?.vendorDevice || null,
+      chipset: hardware?.chipset || null,
+      csiSupport: hardware?.csiSupport || "Raw CSI support not verified"
     });
   }
   const connected = (interfaceText.match(/\bSSID\s*:\s*(.+)/i) || [])[1]?.trim() || null;
@@ -210,12 +233,14 @@ ipcMain.handle("csi:diagnostics", async () => {
     available: true,
     rawCsiAvailable: false,
     status: "no-csi-backend",
-    message: "Windows reports ordinary WLAN adapter information, but no raw Channel State Information capture interface or compatible CSI backend is installed. Movement and presence sensing remain disabled.",
+    message: "Windows reports ordinary WLAN and hardware IDs, but no raw Channel State Information capture interface or compatible CSI backend is installed. Movement and presence sensing remain disabled.",
     wifiAdapters: adapters,
+    hardwareInventory,
     connectedSsid: connected,
     checkedAt,
     limitations: [
       "netsh reports connection and driver details, not per-subcarrier CSI samples",
+      "Hardware IDs can identify a chipset but do not prove raw CSI capture support",
       "Signal percentage cannot be used as a substitute for CSI",
       "A compatible adapter, driver and capture backend must be verified before enabling sensing"
     ]
