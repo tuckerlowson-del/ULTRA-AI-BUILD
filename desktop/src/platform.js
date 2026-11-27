@@ -120,21 +120,21 @@ if (!window.onebrain) {
       if (activeController) activeController.abort();
       emit({ type: "status", message: "Request stopped." });
     },
-    async runAgent(task, apiKey, model) {
+    async runAgent(task, apiKey, model, endpoint) {
       if (!apiKey || !apiKey.trim()) throw new Error("Add your OpenRouter API key in Settings first.");
       activeController = new AbortController();
       emit({ type: "status", message: "Connecting to OpenRouter…" });
       try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const response = await fetch((String(endpoint||"https://openrouter.ai/api/v1").replace(/\\/+$/,"").endsWith("/chat/completions")?String(endpoint).replace(/\\/+$/,""):String(endpoint||"https://openrouter.ai/api/v1").replace(/\\/+$/,"")+"/chat/completions"), {
           method: "POST", signal: activeController.signal,
-          headers: { "Authorization": `Bearer ${apiKey.trim()}`, "Content-Type": "application/json",
+          headers: { "Authorization": /^Bearer\\s/i.test(apiKey.trim()) ? apiKey.trim() : `Bearer ${apiKey.trim()}`, "Content-Type": "application/json",
             "HTTP-Referer": "https://github.com/tuckerlowson-del/ULTRA-AI-BUILD", "X-Title": "ONE BRAIN Android" },
           body: JSON.stringify({ model: model.trim() || "openai/gpt-4o",
             messages: [{ role: "system", content: "You are ONE BRAIN, a helpful AI assistant. You are running in Android. You cannot control the phone, a Windows PC, access local files, or perform background actions. Be clear about these limits." },
               { role: "user", content: task }] })
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data?.error?.message || `OpenRouter request failed (HTTP ${response.status}).`);
+        if (!response.ok) throw new Error(data?.error?.message || `API provider request failed (HTTP ${response.status}).`);
         const answer = data?.choices?.[0]?.message?.content;
         const result = Array.isArray(answer) ? answer.map(part => part.text || "").join("\\n") : answer;
         if (!result) throw new Error("The selected model returned an empty response.");
