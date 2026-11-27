@@ -54,8 +54,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "include": "build/installer.nsh",
-      "shortcutName": "ONE BRAIN",
-      "deleteAppDataOnUninstall": false
+      "shortcutName": "ONE BRAIN"
     },
     "publish": [
       {
