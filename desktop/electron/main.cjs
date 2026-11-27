@@ -203,9 +203,9 @@ ipcMain.handle("csi:diagnostics", async () => {
     const columns = line.split(",");
     if (columns.length < 4) return null;
     const pnpDeviceId = columns[columns.length - 1].trim();
-    if (!/(PCI|USB)\\VEN_[0-9A-F]{4}&DEV_[0-9A-F]{4}/i.test(pnpDeviceId)) return null;
     const name = columns[columns.length - 2].trim();
     const manufacturer = columns[columns.length - 3].trim();
+    if (!/(PCI|USB)\\VEN_[0-9A-F]{4}&DEV_[0-9A-F]{4}/i.test(pnpDeviceId) || !/(wireless|wlan|wi-?fi|802\\.11)/i.test(name)) return null;
     const id = (pnpDeviceId.match(/VEN_([0-9A-F]{4})&DEV_([0-9A-F]{4})/i) || []);
     const vendorDevice = id.length ? id[1].toUpperCase() + ":" + id[2].toUpperCase() : "";
     const chipset = vendorDevice === "14E4:4315" ? "Broadcom BCM4312 family" : "";
