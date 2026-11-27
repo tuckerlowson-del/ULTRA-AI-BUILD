@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("onebrain", {
+  localAIChat: (messages, model) => ipcRenderer.invoke("local-ai:chat", { messages, model }),
   getUpdateStatus: () => ipcRenderer.invoke("updates:get"),
   getApiKey: () => ipcRenderer.invoke("settings:api-key:get"),
   saveApiKey: (key) => ipcRenderer.invoke("settings:api-key:set", key),
