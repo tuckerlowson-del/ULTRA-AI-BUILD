@@ -52,7 +52,7 @@ function emit(type, message, extra = {}) {
 }
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1440, height: 900, minWidth: 1080, minHeight: 700,
+    width: 1440, height: 900, minWidth: 900, minHeight: 640,
     backgroundColor: "#080d17", title: "ONE BRAIN",
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true }
