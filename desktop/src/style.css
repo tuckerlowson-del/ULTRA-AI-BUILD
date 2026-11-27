@@ -229,3 +229,33 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 
 /* CSI sensing diagnostics */
 .csi-status-panel{display:flex;align-items:center;gap:18px;padding:22px;margin-bottom:16px}.csi-status-icon{width:58px;height:58px;display:grid;place-items:center;border-radius:15px;background:#35202a;color:#ff9aab;flex:none}.csi-status-copy{flex:1;min-width:0}.csi-status-copy h3{font-size:17px;letter-spacing:.3px;margin:6px 0}.csi-status-copy p,.csi-explainer p{font-size:11px;line-height:1.7;color:#91a8bd;margin:5px 0}.csi-status-pill{font:9px 'DM Mono';letter-spacing:1px;border-radius:20px;padding:8px 11px;white-space:nowrap}.csi-status-pill.blocked{color:#ffb0bd;background:#3b202a;border:1px solid #70404d}.csi-status-pill.ready{color:#78e0c8;background:#12332f;border:1px solid #28675b}.csi-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}.csi-adapter{padding:13px 2px;border-bottom:1px solid #23394e}.csi-adapter:last-child{border:0}.csi-adapter b,.csi-adapter small{display:block}.csi-adapter b{font-size:12px;color:#dceaf7}.csi-adapter small{font-size:10px;color:#819ab2;margin-top:5px;overflow-wrap:anywhere}.csi-capability{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #23394e;font-size:11px}.csi-capability span{font-size:10px;text-align:right}.csi-no{color:#ff9cab}.csi-good{color:#72e0c5}.csi-explainer{max-width:100%}.csi-explainer b{color:#dceaf7}@media(max-width:850px){.csi-grid{grid-template-columns:1fr}.csi-status-panel{align-items:flex-start;flex-wrap:wrap}.csi-status-pill{margin-left:76px}}
+
+
+/* Compact provider picker + refined conversational workspace */
+.provider-choice-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px;margin:8px 0 16px;width:100%}
+.provider-chip{min-width:0;min-height:38px;padding:8px 7px;border:1px solid #2a4057;border-radius:9px;background:linear-gradient(180deg,#14263a,#0e1b2b);color:#9db3c9;font:600 10px Manrope, sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;transition:border-color .16s,background .16s,color .16s,transform .16s}
+.provider-chip:hover{border-color:#4b8d9a;color:#e5f6ff;transform:translateY(-1px)}
+.provider-chip.active{border-color:#54d8c3;background:linear-gradient(135deg,#17413f,#16344a);color:#eafffb;box-shadow:inset 0 0 0 1px #54d8c322,0 5px 16px #0003}
+.settings-page>.panel:first-child{grid-column:1/-1}
+.settings-page>.panel:first-child>.panel-head{grid-column:1/-1}
+.saved-provider-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.saved-provider-row select{flex:1;min-width:220px}
+.saved-provider-row .outline-btn{width:auto;white-space:nowrap}
+.settings-page>.panel:first-child>label{margin-top:10px}
+.settings-page>.panel:first-child>input,.settings-page>.panel:first-child>select{min-width:0}
+.catalog-panel{margin-top:14px}
+.chat-page{max-width:1240px;margin:0 auto;gap:0}
+.chat-intro{padding:8px 4px 16px;border-bottom:1px solid #1d3045}
+.chat-transcript{max-width:980px;width:100%;margin:0 auto;max-height:calc(100vh - 300px);padding:26px clamp(14px,4vw,42px);border:0;background:transparent;scrollbar-gutter:stable}
+.chat-bubble{max-width:min(82%,780px);padding:15px 18px;border-radius:17px;margin-bottom:18px;font-size:13px;line-height:1.75;box-shadow:0 8px 24px #00000012}
+.chat-bubble.user{border-radius:17px 17px 5px 17px;background:linear-gradient(145deg,#18394a,#142e40);border:1px solid #2b5368}
+.chat-bubble.assistant{max-width:min(92%,860px);padding:17px 20px;background:linear-gradient(145deg,#142438,#111e2d);border:1px solid #263c52;border-radius:5px 17px 17px 17px}
+.chat-bubble p{font-size:13px;line-height:1.75}
+.chat-bubble small{display:block;margin-bottom:7px;font-size:9px;letter-spacing:1.3px}
+.chat-compose{max-width:980px;width:100%;margin:14px auto 8px;padding:10px;border:1px solid #34516a;border-radius:17px;background:linear-gradient(145deg,#14263a,#0e1b2b);box-shadow:0 12px 36px #0004}
+.chat-compose textarea{min-height:54px;max-height:180px;padding:15px;border:0;background:transparent;font-size:13px;line-height:1.6}
+.chat-compose textarea:focus{border:0;box-shadow:none}
+.chat-compose .run-btn{min-width:54px;width:54px;height:48px;border-radius:13px}
+.chat-toolbar{max-width:980px;width:100%;margin:0 auto 8px;background:#0d1b29}
+@media(max-width:1100px){.provider-choice-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:760px){.provider-choice-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.provider-chip{min-height:36px;font-size:9px}.settings-page>.panel:first-child{grid-column:1}.chat-transcript{padding:18px 4px;max-height:none}.chat-bubble,.chat-bubble.assistant{max-width:94%;padding:13px 14px}.chat-compose{margin-top:10px}.saved-provider-row select{min-width:0}}
