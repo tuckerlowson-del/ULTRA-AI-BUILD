@@ -228,12 +228,12 @@ async function executeTool(name, args) {
   throw new Error("Unknown tool: " + name);
 }
 ipcMain.handle("screen:capture", async () => captureScreen(false));
-ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
+ipcMain.handle("agent:run", async (_event, { task, key, model, endpoint }) => {
   if (running) throw new Error("An agent task is already running.");
   if (!task || !String(task).trim()) throw new Error("Enter a task first.");
-  if (!key) throw new Error("Add your OpenRouter API key in the app first.");
+  if (!key) throw new Error("Add an API key or use AI Chat Local Assist.");
   running = true; stopRequested = false;
-  const chosenModel = model || "openai/gpt-4o";
+  const chosenModel = model || "openai/gpt-4o";\n  const baseUrl=String(endpoint||"https://openrouter.ai/api/v1").trim().replace(/\\/+$/,"");\n  const apiUrl=baseUrl.endsWith("/chat/completions")?baseUrl:baseUrl+"/chat/completions";\n  const authorization=/^Bearer\\s/i.test(String(key).trim())?String(key).trim():"Bearer "+String(key).trim();
   const messages = [
     { role: "system", content: "You are ONE BRAIN, a careful desktop AI operator. You have desktop screenshots, accurately mapped mouse clicks, keyboard typing/keys, approved built-in app launching, running-app listing, workspace file listing/reading/folder opening, website opening, and read-only diagnostics. When the user's instruction is clear, execute it directly without asking a follow-up question or requesting approval for routine desktop actions. You may click, type, press permitted keys, open approved apps and URLs, and inspect the selected workspace whenever needed to complete the requested task. For multi-step tasks, plan briefly, carry out the steps in order, and verify results. Inspect a fresh screenshot before each click, use screenshot pixel coordinates, and verify important actions with another screenshot. Ask a question only if a genuinely essential detail is missing and guessing would cause a meaningful mistake. Never ask for or handle passwords, payment details, private keys, or sensitive personal data. Never delete files, install software, change security settings, or run arbitrary shell commands. Destructive or security-sensitive actions are unavailable. The selected workspace is the only file area you may inspect. Stop when asked." },
     { role: "user", content: String(task).slice(0, 6000) }
@@ -246,7 +246,7 @@ ipcMain.handle("agent:run", async (_event, { task, key, model }) => {
         method: "POST", headers: { "Authorization": "Bearer " + key, "Content-Type": "application/json", "HTTP-Referer": "https://one-brain-updater.tuckerlowson.workers.dev", "X-Title": "ONE BRAIN" },
         body: JSON.stringify({ model: chosenModel, messages, tools: toolSpecs, tool_choice: "auto", temperature: 0.2 })
       });
-      if (!response.ok) throw new Error("OpenRouter returned " + response.status + ": " + (await response.text()).slice(0, 600));
+      if (!response.ok) throw new Error("API provider returned " + response.status + ": " + (await response.text()).slice(0, 600));
       const data = await response.json();
       const message = data.choices?.[0]?.message;
       if (!message) throw new Error("The model returned an empty response.");
