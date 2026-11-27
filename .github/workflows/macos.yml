@@ -14,7 +14,7 @@ permissions:
 jobs:
   macos-desktop:
     name: Build macOS (Apple Silicon + Intel)
-    runs-on: macos-14
+    runs-on: macos-latest
     env:
       VITE_BUILD_NUMBER: ${{ github.run_number }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
