@@ -76,7 +76,7 @@ ipcMain.handle("notifications:show", (_event, payload = {}) => {
 
 ipcMain.handle("clipboard:write", (_event, value) => { clipboard.writeText(String(value || "")); return { copied: true }; });
 ipcMain.handle("chat:export", async (_event, { title, markdown } = {}) => {
-  const safeTitle = String(title || "ONE BRAIN chat").replace(/[<>:"/\\\\|?*]/g, "-").slice(0, 80);
+  const safeTitle = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"].reduce((value, char) => value.split(char).join("-"), String(title || "ONE BRAIN chat")).slice(0, 80);
   const result = await dialog.showSaveDialog(mainWindow, { title: "Export ONE BRAIN conversation", defaultPath: safeTitle + ".md", filters: [{ name: "Markdown", extensions: ["md"] }, { name: "Text", extensions: ["txt"] }] });
   if (result.canceled || !result.filePath) return { cancelled: true };
   await fs.writeFile(result.filePath, String(markdown || ""), "utf8");
