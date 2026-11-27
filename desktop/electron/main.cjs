@@ -13,6 +13,8 @@ else app.on("second-instance", () => { if (mainWindow && !mainWindow.isDestroyed
 let workspace = app.getPath("documents");
 let screenCaptureMetrics = { imageWidth: 1280, imageHeight: 720 };
 const apiKeyFile = path.join(app.getPath("userData"), "openrouter-key.enc");
+const appDataFile = path.join(app.getPath("userData"), "onebrain-data.json");
+let modelCatalogCache = { key: "", at: 0, data: [] };
 let stopRequested = false;
 let running = false;
 let updateState = { status: "idle", message: "Updates have not been checked yet.", version: null, percent: 0 };
@@ -71,6 +73,56 @@ ipcMain.handle("notifications:show", (_event, payload = {}) => {
   showWindowsNotification(payload.title || "ONE BRAIN", payload.body || "");
   return { ok: true };
 });
+
+ipcMain.handle("app-data:load", async () => {
+  try {
+    const raw = await fs.readFile(appDataFile, "utf8");
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    if (error && error.code === "ENOENT") return {};
+    console.warn("Could not load ONE BRAIN data:", error.message);
+    return {};
+  }
+});
+ipcMain.handle("app-data:save", async (_event, payload = {}) => {
+  const data = payload && typeof payload === "object" ? payload : {};
+  const serialized = JSON.stringify(data);
+  if (Buffer.byteLength(serialized, "utf8") > 20 * 1024 * 1024) throw new Error("ONE BRAIN data is too large to save (20 MB limit).");
+  await fs.mkdir(path.dirname(appDataFile), { recursive: true });
+  const temporary = appDataFile + ".tmp";
+  await fs.writeFile(temporary, serialized, { encoding: "utf8" });
+  await fs.rename(temporary, appDataFile);
+  return { saved: true, savedAt: new Date().toISOString(), bytes: Buffer.byteLength(serialized, "utf8") };
+});
+ipcMain.handle("models:list", async (_event, { endpoint, key } = {}) => {
+  const base = String(endpoint || "https://openrouter.ai/api/v1").trim().replace(/\/+$/, "");
+  const parsed = new URL(base);
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password) throw new Error("Model catalogue requires a secure HTTPS provider endpoint.");
+  const target = base + (base.endsWith("/models") ? "" : "/models");
+  const cacheKey = target + "|" + (String(key || "").length ? "authenticated" : "public");
+  if (modelCatalogCache.key === cacheKey && Date.now() - modelCatalogCache.at < 5 * 60 * 1000) return { source: target, models: modelCatalogCache.data, cached: true };
+  const headers = { "Accept": "application/json" };
+  if (key) headers.Authorization = /^Bearer\s/i.test(String(key).trim()) ? String(key).trim() : "Bearer " + String(key).trim();
+  const response = await fetch(target, { headers, signal: AbortSignal.timeout(20000) });
+  if (!response.ok) throw new Error("Model catalogue returned HTTP " + response.status + ". " + (await response.text()).slice(0, 300));
+  const payload = await response.json();
+  const list = Array.isArray(payload.data) ? payload.data : Array.isArray(payload.models) ? payload.models : [];
+  if (!list.length) throw new Error("The provider did not return a model list.");
+  const models = list.map(item => ({
+    id: String(item.id || item.name || ""),
+    name: String(item.name || item.id || ""),
+    description: String(item.description || ""),
+    pricing: item.pricing && typeof item.pricing === "object" ? item.pricing : null,
+    context_length: Number(item.context_length || item.context_window || 0) || null,
+    architecture: item.architecture && typeof item.architecture === "object" ? item.architecture : null,
+    supported_parameters: Array.isArray(item.supported_parameters) ? item.supported_parameters : [],
+    created: Number(item.created || 0) || null
+  })).filter(item => item.id);
+  modelCatalogCache = { key: cacheKey, at: Date.now(), data: models };
+  return { source: target, models, cached: false };
+});
+
 ipcMain.handle("updates:check", async () => {
   if (!app.isPackaged || process.platform !== "win32") return { ...updateState, status: "unsupported", message: "Install the Windows desktop version to use automatic updates." };
   emitUpdate("checking", "Checking GitHub Releases for updates…");
