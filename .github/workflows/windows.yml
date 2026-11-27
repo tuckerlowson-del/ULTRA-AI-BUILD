@@ -7,7 +7,7 @@ concurrency:
 on:
   workflow_dispatch:
   push:
-    branches: ["feature/android-capacitor"]
+    branches: ["feature/android-capacitor", "windows-only-update"]
     paths:
       - "desktop/**"
       - ".github/workflows/windows.yml"

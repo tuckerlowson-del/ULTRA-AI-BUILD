@@ -56,6 +56,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1440, height: 900, minWidth: 900, minHeight: 640,
     backgroundColor: "#080d17", title: "ONE BRAIN",
+    icon: process.platform === "win32" ? path.join(__dirname, "../assets/onebrain.ico") : undefined,
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
@@ -98,9 +99,18 @@ ipcMain.handle("app-data:load", async () => {
   }
 });
 ipcMain.handle("app-data:save", async (_event, payload = {}) => {
-  const data = payload && typeof payload === "object" ? payload : {};
+  const source = payload && typeof payload === "object" ? payload : {};
+  const data = {
+    ...source,
+    providerProfiles: Array.isArray(source.providerProfiles) ? source.providerProfiles.slice(0, 20) : [],
+    pinnedChatIds: Array.isArray(source.pinnedChatIds) ? source.pinnedChatIds.slice(0, 60) : [],
+    chats: Array.isArray(source.chats) ? source.chats.slice(0, 60).map(chat => ({ ...chat, messages: Array.isArray(chat.messages) ? chat.messages.slice(-60).map(message => ({ ...message, content: String(message.content || "").slice(0, 12000) })) : [] })) : [],
+    chatMessages: Array.isArray(source.chatMessages) ? source.chatMessages.slice(-60).map(message => ({ ...message, content: String(message.content || "").slice(0, 12000) })) : [],
+    deviceHistory: Object.fromEntries(Object.entries(source.deviceHistory || {}).sort((a, b) => (Number(b[1]?.lastSeen) || 0) - (Number(a[1]?.lastSeen) || 0)).slice(0, 300)),
+    events: Array.isArray(source.events) ? source.events.slice(0, 40).map(event => ({ id: event.id, type: event.type, message: String(event.message || "").slice(0, 1200), at: event.at, tool: event.tool })) : []
+  };
   const serialized = JSON.stringify(data);
-  if (Buffer.byteLength(serialized, "utf8") > 20 * 1024 * 1024) throw new Error("ONE BRAIN data is too large to save (20 MB limit).");
+  if (Buffer.byteLength(serialized, "utf8") > 8 * 1024 * 1024) throw new Error("ONE BRAIN data is too large after cleanup (8 MB limit).");
   await fs.mkdir(path.dirname(appDataFile), { recursive: true });
   const temporary = appDataFile + ".tmp";
   await fs.writeFile(temporary, serialized, { encoding: "utf8" });
