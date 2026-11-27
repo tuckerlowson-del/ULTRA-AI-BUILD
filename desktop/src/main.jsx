@@ -1,7 +1,7 @@
 import "./platform.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Activity, Bot, BrainCircuit, CheckCircle2, ChevronDown, CircleStop, Command, Cpu, FolderOpen, Globe, KeyRound, Monitor, Play, Plus, Send, Settings2, ShieldCheck, Sparkles, SquareTerminal, Wifi, XCircle, Radar, RefreshCw, MessageSquare, Smartphone } from "lucide-react";
+import { Activity, Bot, BrainCircuit, CheckCircle2, ChevronDown, CircleStop, Command, Cpu, FolderOpen, Globe, KeyRound, Monitor, Play, Plus, Send, Settings2, ShieldCheck, Sparkles, SquareTerminal, Wifi, XCircle, Radar, RefreshCw, MessageSquare, Smartphone, RadioTower } from "lucide-react";
 import "./style.css";
 import "./notifications.css";
 
