@@ -55,7 +55,14 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "include": "build/installer.nsh",
-      "shortcutName": "ONE BRAIN"
+      "shortcutName": "ONE BRAIN",
+      "perMachine": false,
+      "allowElevation": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "installerIcon": "assets/onebrain.ico",
+      "uninstallerIcon": "assets/onebrain.ico"
     },
     "publish": [
       {
