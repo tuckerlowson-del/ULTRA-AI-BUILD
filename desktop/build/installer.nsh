@@ -26,7 +26,7 @@
     ${If} $OBWelcomeDialog == error
       Abort
     ${EndIf}
-    !insertmacro MUI_HEADER_TEXT "Welcome to ONE BRAIN" "Your private AI workspace, built by Wonder Studios."
+    !insertmacro MUI_HEADER_TEXT "Welcome to ONE BRAIN" "Your private AI workspace · Wonder Studios."
     ${NSD_CreateLabel} 0 4u 100% 15u "ONE BRAIN"
     Pop $OBWelcomeTitle
     SetCtlColors $OBWelcomeTitle "65E6D0" "101B2B"
@@ -41,7 +41,7 @@
     ${NSD_CreateLabel} 0 111u 100% 34u "INSTALLATION"
     Pop $0
     SetCtlColors $0 "65E6D0" "101B2B"
-    ${NSD_CreateLabel} 0 128u 100% 42u "Choose Next to select an installation folder. ONE BRAIN will create a Start Menu entry and a desktop shortcut."
+    ${NSD_CreateLabel} 0 128u 100% 42u "On the next page, choose where ONE BRAIN should be installed. If your PC has an SSD, select its drive. Your chats and settings stay in your Windows user profile."
     Pop $0
     SetCtlColors $0 "AFC2D5" "101B2B"
     nsDialogs::Show
@@ -62,10 +62,10 @@
     SetCtlColors $OBFinishTitle "65E6D0" "101B2B"
     CreateFont $0 "Segoe UI" 22 700
     SendMessage $OBFinishTitle ${WM_SETFONT} $0 0
-    ${NSD_CreateLabel} 0 45u 100% 45u "Your workspace has been installed. Launch ONE BRAIN from the desktop shortcut or Start Menu."
+    ${NSD_CreateLabel} 0 45u 100% 45u "ONE BRAIN is installed. Launch it from the desktop shortcut or Start Menu. Your saved chats and settings are kept separately."
     Pop $OBFinishBody
     SetCtlColors $OBFinishBody "E6F0FA" "101B2B"
-    ${NSD_CreateLabel} 0 108u 100% 28u "Tip: Open Settings to configure your AI provider and connect your devices."
+    ${NSD_CreateLabel} 0 108u 100% 28u "NEXT: Open Settings to connect your AI provider, choose Lite mode on older PCs, and configure your workspace."
     Pop $0
     SetCtlColors $0 "8FA9C1" "101B2B"
     nsDialogs::Show
